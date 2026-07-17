@@ -32,7 +32,29 @@
   html{
     font-size:calc(16px * var(--font-scale));
   }
-  body.high-contrast{
+  body.theme-dark{
+    --paper:#12191A;
+    --card:#1B2422;
+    --ink:#EDEAE2;
+    --ink-soft:#B7C0BC;
+    --teal:#5FBBA9;
+    --teal-deep:#8ED4C4;
+    --flag:#E38868;
+    --flag-soft:#3A241D;
+    --line:#33403C;
+  }
+  body.theme-sepia{
+    --paper:#F3E9D7;
+    --card:#FBF3E4;
+    --ink:#4A3728;
+    --ink-soft:#7A6650;
+    --teal:#8C6A3F;
+    --teal-deep:#5C4326;
+    --flag:#B0503B;
+    --flag-soft:#E8D2BC;
+    --line:#DFCBA9;
+  }
+  body.theme-contrast{
     --paper:#000000;
     --card:#000000;
     --ink:#FFFFFF;
@@ -43,20 +65,24 @@
     --flag-soft:#3A1F1F;
     --line:#FFFFFF;
   }
-  body.high-contrast .mode-btn,
-  body.high-contrast .upload-zone,
-  body.high-contrast .file-chip,
-  body.high-contrast .result,
-  body.high-contrast .install-btn{
+  body.theme-contrast .mode-btn,
+  body.theme-contrast .upload-zone,
+  body.theme-contrast .file-chip,
+  body.theme-contrast .result,
+  body.theme-contrast .install-btn{
     border-width:2px;
   }
-  body.high-contrast .mode-btn.active{
+  body.theme-contrast .mode-btn.active{
     background:var(--teal);
     color:#000;
   }
-  body.high-contrast .mode-btn.active .mode-title,
-  body.high-contrast .mode-btn.active .mode-desc{color:#000;}
-  body.high-contrast .run-btn{color:#000;}
+  body.theme-contrast .mode-btn.active .mode-title,
+  body.theme-contrast .mode-btn.active .mode-desc{color:#000;}
+  body.theme-contrast .run-btn{color:#000;}
+  body.theme-contrast .a11y-btn[aria-pressed="true"]{color:#000;}
+  body.theme-dark .run-btn,
+  body.theme-sepia .run-btn{color:var(--paper);}
+
   body.dyslexia-font{
     --font-display:'Lexend',sans-serif;
     --font-body:'Lexend',sans-serif;
@@ -68,7 +94,7 @@
     outline:3px solid var(--teal);
     outline-offset:2px;
   }
-  body.high-contrast :focus-visible{
+  body.theme-contrast :focus-visible{
     outline-color:#FFD400;
   }
 
@@ -388,6 +414,13 @@
     justify-content:space-between;
     gap:12px;
   }
+  .a11y-row-wrap{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .a11y-row-wrap .a11y-btn-group{
+    flex-wrap:wrap;
+  }
   .a11y-label{
     font-size:0.85rem;
     font-weight:500;
@@ -459,9 +492,14 @@
         <button type="button" class="a11y-btn" data-scale="1.3" aria-pressed="false">A++</button>
       </div>
     </div>
-    <div class="a11y-row">
-      <span class="a11y-label" id="contrastLabel">Alto contraste</span>
-      <button type="button" id="contrastSwitch" class="switch" role="switch" aria-checked="false" aria-labelledby="contrastLabel"></button>
+    <div class="a11y-row a11y-row-wrap">
+      <span class="a11y-label" id="themeLabel">Tema de color</span>
+      <div class="a11y-btn-group" role="group" aria-labelledby="themeLabel">
+        <button type="button" class="a11y-btn" data-theme="light" aria-pressed="true">Claro</button>
+        <button type="button" class="a11y-btn" data-theme="dark" aria-pressed="false">Oscuro</button>
+        <button type="button" class="a11y-btn" data-theme="sepia" aria-pressed="false">Sepia</button>
+        <button type="button" class="a11y-btn" data-theme="contrast" aria-pressed="false">Alto contraste</button>
+      </div>
     </div>
     <div class="a11y-row">
       <span class="a11y-label" id="dyslexiaLabel">Fuente de lectura fácil</span>
@@ -548,7 +586,7 @@ const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemi
 // --- Accesibilidad ---
 const a11yToggle = document.getElementById('a11yToggle');
 const a11yPanel = document.getElementById('a11yPanel');
-const contrastSwitch = document.getElementById('contrastSwitch');
+const themeButtons = document.querySelectorAll('.a11y-btn[data-theme]');
 const dyslexiaSwitch = document.getElementById('dyslexiaSwitch');
 const scaleButtons = document.querySelectorAll('.a11y-btn[data-scale]');
 
@@ -574,11 +612,17 @@ scaleButtons.forEach(btn => {
   });
 });
 
-contrastSwitch.addEventListener('click', () => {
-  const isOn = contrastSwitch.getAttribute('aria-checked') === 'true';
-  contrastSwitch.setAttribute('aria-checked', String(!isOn));
-  document.body.classList.toggle('high-contrast', !isOn);
-  safeSet('a11y-high-contrast', String(!isOn));
+function applyTheme(theme){
+  document.body.classList.remove('theme-dark', 'theme-sepia', 'theme-contrast');
+  if (theme !== 'light') document.body.classList.add('theme-' + theme);
+  themeButtons.forEach(b => b.setAttribute('aria-pressed', b.dataset.theme === theme ? 'true' : 'false'));
+}
+
+themeButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    applyTheme(btn.dataset.theme);
+    safeSet('a11y-theme', btn.dataset.theme);
+  });
 });
 
 dyslexiaSwitch.addEventListener('click', () => {
@@ -595,10 +639,8 @@ dyslexiaSwitch.addEventListener('click', () => {
     document.documentElement.style.setProperty('--font-scale', savedScale);
     scaleButtons.forEach(b => b.setAttribute('aria-pressed', b.dataset.scale === savedScale ? 'true' : 'false'));
   }
-  if (safeGet('a11y-high-contrast') === 'true') {
-    document.body.classList.add('high-contrast');
-    contrastSwitch.setAttribute('aria-checked', 'true');
-  }
+  const savedTheme = safeGet('a11y-theme');
+  if (savedTheme) applyTheme(savedTheme);
   if (safeGet('a11y-dyslexia-font') === 'true') {
     document.body.classList.add('dyslexia-font');
     dyslexiaSwitch.setAttribute('aria-checked', 'true');
