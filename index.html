@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Resultados">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Lexend:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
     --paper:#F6F3EC;
@@ -24,13 +24,74 @@
     --flag:#AE4B36;
     --flag-soft:#F1DED8;
     --line:#DCD5C4;
+    --font-display:'Source Serif 4',serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+    --font-scale:1;
+  }
+  html{
+    font-size:calc(16px * var(--font-scale));
+  }
+  body.high-contrast{
+    --paper:#000000;
+    --card:#000000;
+    --ink:#FFFFFF;
+    --ink-soft:#F2F2F2;
+    --teal:#FFD400;
+    --teal-deep:#FFFFFF;
+    --flag:#FF8A65;
+    --flag-soft:#3A1F1F;
+    --line:#FFFFFF;
+  }
+  body.high-contrast .mode-btn,
+  body.high-contrast .upload-zone,
+  body.high-contrast .file-chip,
+  body.high-contrast .result,
+  body.high-contrast .install-btn{
+    border-width:2px;
+  }
+  body.high-contrast .mode-btn.active{
+    background:var(--teal);
+    color:#000;
+  }
+  body.high-contrast .mode-btn.active .mode-title,
+  body.high-contrast .mode-btn.active .mode-desc{color:#000;}
+  body.high-contrast .run-btn{color:#000;}
+  body.dyslexia-font{
+    --font-display:'Lexend',sans-serif;
+    --font-body:'Lexend',sans-serif;
+    --font-mono:'Lexend',sans-serif;
+  }
+  body.dyslexia-font .result-text{letter-spacing:0.01em; line-height:1.8;}
+
+  :focus-visible{
+    outline:3px solid var(--teal);
+    outline-offset:2px;
+  }
+  body.high-contrast :focus-visible{
+    outline-color:#FFD400;
+  }
+
+  .skip-link{
+    position:absolute;
+    left:-999px;
+    top:auto;
+    background:var(--teal-deep);
+    color:#fff;
+    padding:10px 16px;
+    border-radius:0 0 8px 0;
+    z-index:1000;
+  }
+  .skip-link:focus{
+    left:0;
+    top:0;
   }
   *{box-sizing:border-box;}
   body{
     margin:0;
     background:var(--paper);
     color:var(--ink);
-    font-family:'Inter',sans-serif;
+    font-family:var(--font-body);
     -webkit-font-smoothing:antialiased;
     min-height:100vh;
   }
@@ -48,7 +109,7 @@
     margin-bottom:24px;
   }
   h1{
-    font-family:'Source Serif 4',serif;
+    font-family:var(--font-display);
     font-weight:600;
     font-size:1.5rem;
     margin:0;
@@ -56,7 +117,7 @@
     letter-spacing:-0.01em;
   }
   .tag{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:var(--font-mono);
     font-size:0.68rem;
     color:var(--ink-soft);
     letter-spacing:0.06em;
@@ -78,7 +139,7 @@
   }
   .upload-zone input{display:none;}
   .upload-icon{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:var(--font-mono);
     font-size:1.6rem;
     color:var(--teal);
     display:block;
@@ -109,14 +170,14 @@
     background:none;
     border:none;
     color:var(--flag);
-    font-family:'IBM Plex Mono',monospace;
+    font-family:var(--font-mono);
     font-size:0.78rem;
     cursor:pointer;
     padding:0;
   }
 
   .section-label{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:var(--font-mono);
     font-size:0.7rem;
     text-transform:uppercase;
     letter-spacing:0.08em;
@@ -164,7 +225,7 @@
     border:none;
     border-radius:10px;
     padding:15px;
-    font-family:'Inter',sans-serif;
+    font-family:var(--font-body);
     font-weight:600;
     font-size:0.95rem;
     cursor:pointer;
@@ -193,7 +254,7 @@
     background:#FBFAF6;
   }
   .result-head span{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:var(--font-mono);
     font-size:0.7rem;
     text-transform:uppercase;
     letter-spacing:0.06em;
@@ -274,7 +335,7 @@
     color:var(--teal-deep);
     border-radius:10px;
     padding:12px;
-    font-family:'Inter',sans-serif;
+    font-family:var(--font-body);
     font-weight:600;
     font-size:0.88rem;
     cursor:pointer;
@@ -282,71 +343,191 @@
     transition:background .15s ease;
   }
   .install-btn:hover{background:#EEF3F1;}
+
+  .visually-hidden{
+    position:absolute;
+    width:1px;height:1px;
+    padding:0;margin:-1px;
+    overflow:hidden;
+    clip:rect(0,0,0,0);
+    white-space:nowrap;
+    border:0;
+  }
+
+  .header-right{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .a11y-toggle{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:6px 10px;
+    font-family:var(--font-body);
+    font-size:0.78rem;
+    font-weight:600;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .a11y-toggle:hover{border-color:var(--teal);}
+
+  .a11y-panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+    margin-bottom:18px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .a11y-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .a11y-label{
+    font-size:0.85rem;
+    font-weight:500;
+  }
+  .a11y-btn-group{
+    display:flex;
+    gap:6px;
+  }
+  .a11y-btn{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:6px 10px;
+    font-family:var(--font-body);
+    font-size:0.8rem;
+    cursor:pointer;
+    color:var(--ink);
+  }
+  .a11y-btn[aria-pressed="true"]{
+    background:var(--teal);
+    border-color:var(--teal);
+    color:#fff;
+  }
+  body.high-contrast .a11y-btn[aria-pressed="true"]{color:#000;}
+
+  .switch{
+    width:44px;
+    height:26px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    position:relative;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .switch::after{
+    content:'';
+    position:absolute;
+    top:2px; left:2px;
+    width:20px; height:20px;
+    border-radius:50%;
+    background:var(--ink-soft);
+    transition:transform .15s ease, background .15s ease;
+  }
+  .switch[aria-checked="true"]{background:var(--teal);}
+  .switch[aria-checked="true"]::after{
+    transform:translateX(18px);
+    background:#fff;
+  }
 </style>
 </head>
 <body>
+<a href="#main" class="skip-link">Saltar al contenido principal</a>
 <div class="wrap">
   <header>
     <h1>Lector de Documentos</h1>
-    <span class="tag" id="headerTag">Lab · Rx</span>
+    <div class="header-right">
+      <span class="tag" id="headerTag">Lab · Rx</span>
+      <button id="a11yToggle" class="a11y-toggle" aria-expanded="false" aria-controls="a11yPanel" aria-label="Abrir opciones de accesibilidad">Aa ⚙</button>
+    </div>
   </header>
+
+  <div id="a11yPanel" class="a11y-panel" hidden>
+    <div class="a11y-row">
+      <span class="a11y-label" id="fontSizeLabel">Tamaño de texto</span>
+      <div class="a11y-btn-group" role="group" aria-labelledby="fontSizeLabel">
+        <button type="button" class="a11y-btn" data-scale="1" aria-pressed="true">A</button>
+        <button type="button" class="a11y-btn" data-scale="1.15" aria-pressed="false">A+</button>
+        <button type="button" class="a11y-btn" data-scale="1.3" aria-pressed="false">A++</button>
+      </div>
+    </div>
+    <div class="a11y-row">
+      <span class="a11y-label" id="contrastLabel">Alto contraste</span>
+      <button type="button" id="contrastSwitch" class="switch" role="switch" aria-checked="false" aria-labelledby="contrastLabel"></button>
+    </div>
+    <div class="a11y-row">
+      <span class="a11y-label" id="dyslexiaLabel">Fuente de lectura fácil</span>
+      <button type="button" id="dyslexiaSwitch" class="switch" role="switch" aria-checked="false" aria-labelledby="dyslexiaLabel"></button>
+    </div>
+  </div>
+
+  <main id="main">
 
   <button id="installBtn" class="install-btn" style="display:none;">⬇ Instalar app</button>
 
-  <div id="uploadZone" class="upload-zone">
+  <div id="uploadZone" class="upload-zone" role="button" tabindex="0" aria-label="Subir documento, PDF o foto">
+    <label for="fileInput" class="visually-hidden">Subir documento (PDF o foto)</label>
     <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.webp">
-    <span class="upload-icon">⌁</span>
+    <span class="upload-icon" aria-hidden="true">⌁</span>
     <div class="upload-label">Sube tu documento (PDF o foto)</div>
     <div class="upload-hint">Toca aquí o arrastra el archivo</div>
   </div>
-  <div id="fileChipHolder"></div>
+  <div id="fileChipHolder" aria-live="polite"></div>
 
-  <div class="section-label">Tipo de documento</div>
-  <div class="modes" id="categoryToggle">
-    <button class="mode-btn active" data-cat="medico">
+  <div class="section-label" id="categoryLabel">Tipo de documento</div>
+  <div class="modes" id="categoryToggle" role="group" aria-labelledby="categoryLabel">
+    <button class="mode-btn active" data-cat="medico" aria-pressed="true">
       <span class="mode-title">Análisis médico</span>
       <span class="mode-desc">Laboratorio, resultados clínicos</span>
     </button>
-    <button class="mode-btn" data-cat="judicial">
+    <button class="mode-btn" data-cat="judicial" aria-pressed="false">
       <span class="mode-title">Folio judicial</span>
       <span class="mode-desc">Expedientes, resoluciones, causas</span>
     </button>
   </div>
 
-  <div class="section-label">¿Qué necesitas?</div>
-  <div class="modes" id="modesMedico">
-    <button class="mode-btn active" data-mode="resumen">
+  <div class="section-label" id="needLabelMedico">¿Qué necesitas?</div>
+  <div class="modes" id="modesMedico" role="group" aria-labelledby="needLabelMedico">
+    <button class="mode-btn active" data-mode="resumen" aria-pressed="true">
       <span class="mode-title">Resumen general</span>
       <span class="mode-desc">Panorama claro y breve de todo el documento</span>
     </button>
-    <button class="mode-btn" data-mode="explica">
+    <button class="mode-btn" data-mode="explica" aria-pressed="false">
       <span class="mode-title">Explica cada valor</span>
       <span class="mode-desc">Qué mide cada prueba, en lenguaje simple</span>
     </button>
-    <button class="mode-btn" data-mode="fuera_rango">
+    <button class="mode-btn" data-mode="fuera_rango" aria-pressed="false">
       <span class="mode-title">Fuera de rango</span>
       <span class="mode-desc">Solo lo que está alto, bajo o anormal</span>
     </button>
-    <button class="mode-btn" data-mode="preguntas">
+    <button class="mode-btn" data-mode="preguntas" aria-pressed="false">
       <span class="mode-title">Preguntas al médico</span>
       <span class="mode-desc">Lista para llevar a tu próxima consulta</span>
     </button>
   </div>
 
-  <div class="modes" id="modesJudicial" style="display:none;">
-    <button class="mode-btn active" data-mode="resumen_folio">
+  <div class="modes" id="modesJudicial" role="group" aria-label="¿Qué necesitas? (folio judicial)" style="display:none;">
+    <button class="mode-btn active" data-mode="resumen_folio" aria-pressed="true">
       <span class="mode-title">Resumen del folio</span>
       <span class="mode-desc">Qué es el caso y en qué estado está, en breve</span>
     </button>
-    <button class="mode-btn" data-mode="partes_roles">
+    <button class="mode-btn" data-mode="partes_roles" aria-pressed="false">
       <span class="mode-title">Partes involucradas</span>
       <span class="mode-desc">Quién es quién: demandante, demandado, jueza, etc.</span>
     </button>
-    <button class="mode-btn" data-mode="fechas_plazos">
+    <button class="mode-btn" data-mode="fechas_plazos" aria-pressed="false">
       <span class="mode-title">Fechas y plazos</span>
       <span class="mode-desc">Fechas clave y plazos que no debes perder</span>
     </button>
-    <button class="mode-btn" data-mode="proximos_pasos">
+    <button class="mode-btn" data-mode="proximos_pasos" aria-pressed="false">
       <span class="mode-title">Próximos pasos</span>
       <span class="mode-desc">Qué sigue y qué acción se espera de ti</span>
     </button>
@@ -354,7 +535,8 @@
 
   <button class="run-btn" id="runBtn" disabled>Sube un archivo primero</button>
 
-  <div id="resultHolder"></div>
+  <div id="resultHolder" aria-live="polite"></div>
+</main>
 </div>
 
 <script>
@@ -362,6 +544,66 @@
 // Restríngela por "referente HTTP" a tu dominio de GitHub Pages para mayor seguridad.
 const GEMINI_API_KEY = 'AQ.Ab8RN6K1tMf6hwUdx5rX_lr-Umgw3Y2R8f_gllygwz3jAPmT9w';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+
+// --- Accesibilidad ---
+const a11yToggle = document.getElementById('a11yToggle');
+const a11yPanel = document.getElementById('a11yPanel');
+const contrastSwitch = document.getElementById('contrastSwitch');
+const dyslexiaSwitch = document.getElementById('dyslexiaSwitch');
+const scaleButtons = document.querySelectorAll('.a11y-btn[data-scale]');
+
+function safeGet(key){
+  try { return localStorage.getItem(key); } catch(e) { return null; }
+}
+function safeSet(key, value){
+  try { localStorage.setItem(key, value); } catch(e) { /* no-op if unavailable */ }
+}
+
+a11yToggle.addEventListener('click', () => {
+  const isHidden = a11yPanel.hasAttribute('hidden');
+  if (isHidden) { a11yPanel.removeAttribute('hidden'); a11yToggle.setAttribute('aria-expanded', 'true'); }
+  else { a11yPanel.setAttribute('hidden', ''); a11yToggle.setAttribute('aria-expanded', 'false'); }
+});
+
+scaleButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const scale = btn.dataset.scale;
+    document.documentElement.style.setProperty('--font-scale', scale);
+    scaleButtons.forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+    safeSet('a11y-font-scale', scale);
+  });
+});
+
+contrastSwitch.addEventListener('click', () => {
+  const isOn = contrastSwitch.getAttribute('aria-checked') === 'true';
+  contrastSwitch.setAttribute('aria-checked', String(!isOn));
+  document.body.classList.toggle('high-contrast', !isOn);
+  safeSet('a11y-high-contrast', String(!isOn));
+});
+
+dyslexiaSwitch.addEventListener('click', () => {
+  const isOn = dyslexiaSwitch.getAttribute('aria-checked') === 'true';
+  dyslexiaSwitch.setAttribute('aria-checked', String(!isOn));
+  document.body.classList.toggle('dyslexia-font', !isOn);
+  safeSet('a11y-dyslexia-font', String(!isOn));
+});
+
+// Restaurar preferencias guardadas
+(function restoreA11yPrefs(){
+  const savedScale = safeGet('a11y-font-scale');
+  if (savedScale) {
+    document.documentElement.style.setProperty('--font-scale', savedScale);
+    scaleButtons.forEach(b => b.setAttribute('aria-pressed', b.dataset.scale === savedScale ? 'true' : 'false'));
+  }
+  if (safeGet('a11y-high-contrast') === 'true') {
+    document.body.classList.add('high-contrast');
+    contrastSwitch.setAttribute('aria-checked', 'true');
+  }
+  if (safeGet('a11y-dyslexia-font') === 'true') {
+    document.body.classList.add('dyslexia-font');
+    dyslexiaSwitch.setAttribute('aria-checked', 'true');
+  }
+})();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -439,8 +681,9 @@ const disclaimers = {
 categoryToggle.addEventListener('click', e => {
   const btn = e.target.closest('.mode-btn');
   if (!btn) return;
-  document.querySelectorAll('#categoryToggle .mode-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#categoryToggle .mode-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
   btn.classList.add('active');
+  btn.setAttribute('aria-pressed', 'true');
   currentCategory = btn.dataset.cat;
 
   if (currentCategory === 'medico') {
@@ -454,12 +697,20 @@ categoryToggle.addEventListener('click', e => {
     currentMode = 'resumen_folio';
     headerTag.textContent = 'Legal · Folio';
   }
-  document.querySelectorAll('.modes .mode-btn[data-mode]').forEach(b => b.classList.remove('active'));
-  document.querySelector(`#modes${currentCategory === 'medico' ? 'Medico' : 'Judicial'} .mode-btn`).classList.add('active');
+  document.querySelectorAll('.modes .mode-btn[data-mode]').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+  const firstModeBtn = document.querySelector(`#modes${currentCategory === 'medico' ? 'Medico' : 'Judicial'} .mode-btn`);
+  firstModeBtn.classList.add('active');
+  firstModeBtn.setAttribute('aria-pressed', 'true');
   resultHolder.innerHTML = '';
 });
 
 uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    fileInput.click();
+  }
+});
 uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
 uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
 uploadZone.addEventListener('drop', e => {
@@ -512,8 +763,9 @@ function renderChip(){
   container.addEventListener('click', e => {
     const btn = e.target.closest('.mode-btn');
     if (!btn) return;
-    container.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    container.querySelectorAll('.mode-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
     btn.classList.add('active');
+    btn.setAttribute('aria-pressed', 'true');
     currentMode = btn.dataset.mode;
   });
 });
