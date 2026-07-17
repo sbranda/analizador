@@ -361,7 +361,7 @@
 // 👉 Reemplaza esto por tu clave gratuita de Google AI Studio (aistudio.google.com/apikey)
 // Restríngela por "referente HTTP" a tu dominio de GitHub Pages para mayor seguridad.
 const GEMINI_API_KEY = 'AQ.Ab8RN6JuC1c84DAZpefaDF-IaGNtcmLBaGtuuEr7MMSoouMMTQ';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -536,7 +536,6 @@ runBtn.addEventListener('click', async () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-goog-api-key': GEMINI_API_KEY,
       },
       body: JSON.stringify({
         contents: [{
