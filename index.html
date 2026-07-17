@@ -287,8 +287,8 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>Lector de Resultados</h1>
-    <span class="tag">Lab · Rx</span>
+    <h1>Lector de Documentos</h1>
+    <span class="tag" id="headerTag">Lab · Rx</span>
   </header>
 
   <button id="installBtn" class="install-btn" style="display:none;">⬇ Instalar app</button>
@@ -296,13 +296,25 @@
   <div id="uploadZone" class="upload-zone">
     <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.webp">
     <span class="upload-icon">⌁</span>
-    <div class="upload-label">Sube tu análisis (PDF o foto)</div>
+    <div class="upload-label">Sube tu documento (PDF o foto)</div>
     <div class="upload-hint">Toca aquí o arrastra el archivo</div>
   </div>
   <div id="fileChipHolder"></div>
 
+  <div class="section-label">Tipo de documento</div>
+  <div class="modes" id="categoryToggle">
+    <button class="mode-btn active" data-cat="medico">
+      <span class="mode-title">Análisis médico</span>
+      <span class="mode-desc">Laboratorio, resultados clínicos</span>
+    </button>
+    <button class="mode-btn" data-cat="judicial">
+      <span class="mode-title">Folio judicial</span>
+      <span class="mode-desc">Expedientes, resoluciones, causas</span>
+    </button>
+  </div>
+
   <div class="section-label">¿Qué necesitas?</div>
-  <div class="modes" id="modes">
+  <div class="modes" id="modesMedico">
     <button class="mode-btn active" data-mode="resumen">
       <span class="mode-title">Resumen general</span>
       <span class="mode-desc">Panorama claro y breve de todo el documento</span>
@@ -318,6 +330,25 @@
     <button class="mode-btn" data-mode="preguntas">
       <span class="mode-title">Preguntas al médico</span>
       <span class="mode-desc">Lista para llevar a tu próxima consulta</span>
+    </button>
+  </div>
+
+  <div class="modes" id="modesJudicial" style="display:none;">
+    <button class="mode-btn active" data-mode="resumen_folio">
+      <span class="mode-title">Resumen del folio</span>
+      <span class="mode-desc">Qué es el caso y en qué estado está, en breve</span>
+    </button>
+    <button class="mode-btn" data-mode="partes_roles">
+      <span class="mode-title">Partes involucradas</span>
+      <span class="mode-desc">Quién es quién: demandante, demandado, jueza, etc.</span>
+    </button>
+    <button class="mode-btn" data-mode="fechas_plazos">
+      <span class="mode-title">Fechas y plazos</span>
+      <span class="mode-desc">Fechas clave y plazos que no debes perder</span>
+    </button>
+    <button class="mode-btn" data-mode="proximos_pasos">
+      <span class="mode-title">Próximos pasos</span>
+      <span class="mode-desc">Qué sigue y qué acción se espera de ti</span>
     </button>
   </div>
 
@@ -361,17 +392,72 @@ const fileInput = document.getElementById('fileInput');
 const fileChipHolder = document.getElementById('fileChipHolder');
 const runBtn = document.getElementById('runBtn');
 const resultHolder = document.getElementById('resultHolder');
-const modesEl = document.getElementById('modes');
+const categoryToggle = document.getElementById('categoryToggle');
+const modesMedico = document.getElementById('modesMedico');
+const modesJudicial = document.getElementById('modesJudicial');
+const headerTag = document.getElementById('headerTag');
 
 let currentFile = null; // {base64, mediaType, name}
+let currentCategory = 'medico';
 let currentMode = 'resumen';
 
 const modePrompts = {
-  resumen: `Da un resumen general y breve de este documento de análisis médico/laboratorio, en español sencillo, para una persona sin formación médica. Organiza el resumen en 3-5 puntos clave. No des diagnóstico, solo explica qué muestra el documento.`,
-  explica: `Explica en español sencillo qué mide cada prueba o valor incluido en este análisis de laboratorio, uno por uno, en 1-2 frases cada uno. Usa un formato de lista. No des diagnóstico.`,
-  fuera_rango: `Identifica ÚNICAMENTE los valores que están fuera del rango de referencia (altos o bajos) en este análisis. Para cada uno, indica: el nombre del valor, el resultado, el rango normal, y una explicación breve y sencilla de qué podría significar en general (sin diagnosticar). Marca cada valor fuera de rango empezando la línea con "⚑ ". Si todo está normal, dilo claramente.`,
-  preguntas: `Basándote en este análisis de laboratorio, genera una lista de 5-8 preguntas concretas y útiles que la persona podría llevar a su médico en la próxima consulta, en español, para entender mejor sus resultados y próximos pasos.`
+  medico: {
+    resumen: `Da un resumen general y breve de este documento de análisis médico/laboratorio, en español sencillo, para una persona sin formación médica. Organiza el resumen en 3-5 puntos clave. No des diagnóstico, solo explica qué muestra el documento.`,
+    explica: `Explica en español sencillo qué mide cada prueba o valor incluido en este análisis de laboratorio, uno por uno, en 1-2 frases cada uno. Usa un formato de lista. No des diagnóstico.`,
+    fuera_rango: `Identifica ÚNICAMENTE los valores que están fuera del rango de referencia (altos o bajos) en este análisis. Para cada uno, indica: el nombre del valor, el resultado, el rango normal, y una explicación breve y sencilla de qué podría significar en general (sin diagnosticar). Marca cada valor fuera de rango empezando la línea con "⚑ ". Si todo está normal, dilo claramente.`,
+    preguntas: `Basándote en este análisis de laboratorio, genera una lista de 5-8 preguntas concretas y útiles que la persona podría llevar a su médico en la próxima consulta, en español, para entender mejor sus resultados y próximos pasos.`
+  },
+  judicial: {
+    resumen_folio: `Este documento es un folio o expediente judicial. Da un resumen general y breve en español sencillo, para alguien sin formación legal: de qué trata el caso, en qué materia (civil, penal, laboral, etc.) y en qué etapa procesal se encuentra actualmente. Organiza en 3-5 puntos clave. No des asesoría legal, solo explica qué muestra el documento.`,
+    partes_roles: `Identifica a todas las partes y personas mencionadas en este folio judicial: demandante, demandado, jueza/juez, fiscal, abogados, testigos, u otros roles relevantes. Para cada una, indica su nombre y su rol en el caso, en formato de lista, en español sencillo.`,
+    fechas_plazos: `Extrae ÚNICAMENTE las fechas y plazos importantes mencionados en este folio judicial: audiencias, notificaciones, vencimientos de plazos para responder o apelar, y cualquier fecha límite. Para cada una indica la fecha, qué evento es, y por qué importa. Marca los plazos que estén próximos a vencer o sean urgentes empezando la línea con "⚑ ". Usa formato de lista.`,
+    proximos_pasos: `Basándote en el estado actual de este folio judicial, genera una lista de 4-7 próximos pasos concretos: qué acciones se esperan de la persona, qué documentos podría necesitar preparar, y qué preguntas debería hacerle a su abogado. En español sencillo. No es asesoría legal, son sugerencias generales de organización.`
+  }
 };
+
+const modeLabels = {
+  medico: {
+    resumen: 'Resumen general',
+    explica: 'Explicación de valores',
+    fuera_rango: 'Valores fuera de rango',
+    preguntas: 'Preguntas para el médico'
+  },
+  judicial: {
+    resumen_folio: 'Resumen del folio',
+    partes_roles: 'Partes involucradas',
+    fechas_plazos: 'Fechas y plazos',
+    proximos_pasos: 'Próximos pasos'
+  }
+};
+
+const disclaimers = {
+  medico: 'Esto no es un diagnóstico médico. Para interpretar tus resultados con certeza y decidir próximos pasos, consulta siempre con tu médico.',
+  judicial: 'Esto no es asesoría legal. Para decisiones sobre tu caso, consulta siempre con tu abogado o representante legal.'
+};
+
+categoryToggle.addEventListener('click', e => {
+  const btn = e.target.closest('.mode-btn');
+  if (!btn) return;
+  document.querySelectorAll('#categoryToggle .mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentCategory = btn.dataset.cat;
+
+  if (currentCategory === 'medico') {
+    modesMedico.style.display = 'grid';
+    modesJudicial.style.display = 'none';
+    currentMode = 'resumen';
+    headerTag.textContent = 'Lab · Rx';
+  } else {
+    modesMedico.style.display = 'none';
+    modesJudicial.style.display = 'grid';
+    currentMode = 'resumen_folio';
+    headerTag.textContent = 'Legal · Folio';
+  }
+  document.querySelectorAll('.modes .mode-btn[data-mode]').forEach(b => b.classList.remove('active'));
+  document.querySelector(`#modes${currentCategory === 'medico' ? 'Medico' : 'Judicial'} .mode-btn`).classList.add('active');
+  resultHolder.innerHTML = '';
+});
 
 uploadZone.addEventListener('click', () => fileInput.click());
 uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
@@ -422,12 +508,14 @@ function renderChip(){
   });
 }
 
-modesEl.addEventListener('click', e => {
-  const btn = e.target.closest('.mode-btn');
-  if (!btn) return;
-  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  currentMode = btn.dataset.mode;
+[modesMedico, modesJudicial].forEach(container => {
+  container.addEventListener('click', e => {
+    const btn = e.target.closest('.mode-btn');
+    if (!btn) return;
+    container.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.mode;
+  });
 });
 
 runBtn.addEventListener('click', async () => {
@@ -454,7 +542,7 @@ runBtn.addEventListener('click', async () => {
         contents: [{
           parts: [
             { inlineData: { mimeType: currentFile.mediaType, data: currentFile.base64 } },
-            { text: modePrompts[currentMode] }
+            { text: modePrompts[currentCategory][currentMode] }
           ]
         }]
       })
@@ -483,13 +571,6 @@ function escapeHtml(str){
 }
 
 function renderResult(text){
-  const modeLabels = {
-    resumen: 'Resumen general',
-    explica: 'Explicación de valores',
-    fuera_rango: 'Valores fuera de rango',
-    preguntas: 'Preguntas para el médico'
-  };
-
   const lines = text.split('\n').map(line => {
     let escaped = escapeHtml(line);
     escaped = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -501,13 +582,13 @@ function renderResult(text){
 
   resultHolder.innerHTML = `
     <div class="result">
-      <div class="result-head"><span>${modeLabels[currentMode]}</span></div>
+      <div class="result-head"><span>${modeLabels[currentCategory][currentMode]}</span></div>
       <div class="result-body">
         <div class="margin-rule"></div>
         <div class="result-text">${lines}</div>
       </div>
     </div>
-    <div class="disclaimer">Esto no es un diagnóstico médico. Para interpretar tus resultados con certeza y decidir próximos pasos, consulta siempre con tu médico.</div>
+    <div class="disclaimer">${disclaimers[currentCategory]}</div>
   `;
 }
 </script>
