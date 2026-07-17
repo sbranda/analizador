@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lector de Resultados</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1C3D37">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Resultados">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F3EC;
+    --card:#FFFFFF;
+    --ink:#1E2B29;
+    --ink-soft:#4A5652;
+    --teal:#2C5F56;
+    --teal-deep:#1C3D37;
+    --flag:#AE4B36;
+    --flag-soft:#F1DED8;
+    --line:#DCD5C4;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{
+    max-width:640px;
+    margin:0 auto;
+    padding:28px 20px 60px;
+  }
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    border-bottom:1px solid var(--line);
+    padding-bottom:18px;
+    margin-bottom:24px;
+  }
+  h1{
+    font-family:'Source Serif 4',serif;
+    font-weight:600;
+    font-size:1.5rem;
+    margin:0;
+    color:var(--teal-deep);
+    letter-spacing:-0.01em;
+  }
+  .tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.68rem;
+    color:var(--ink-soft);
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+  }
+
+  .upload-zone{
+    background:var(--card);
+    border:1.5px dashed var(--line);
+    border-radius:10px;
+    padding:26px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .upload-zone:hover, .upload-zone.drag{
+    border-color:var(--teal);
+    background:#FDFCF9;
+  }
+  .upload-zone input{display:none;}
+  .upload-icon{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:1.6rem;
+    color:var(--teal);
+    display:block;
+    margin-bottom:8px;
+  }
+  .upload-label{
+    font-size:0.92rem;
+    color:var(--ink);
+    font-weight:500;
+  }
+  .upload-hint{
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    margin-top:4px;
+  }
+  .file-chip{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 16px;
+    margin-top:14px;
+    font-size:0.88rem;
+  }
+  .file-chip button{
+    background:none;
+    border:none;
+    color:var(--flag);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.78rem;
+    cursor:pointer;
+    padding:0;
+  }
+
+  .section-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.7rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--ink-soft);
+    margin:26px 0 10px;
+  }
+
+  .modes{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .mode-btn{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 14px;
+    text-align:left;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .mode-btn:hover{border-color:var(--teal);}
+  .mode-btn.active{
+    border-color:var(--teal);
+    background:var(--teal);
+  }
+  .mode-btn.active .mode-title, .mode-btn.active .mode-desc{color:#F6F3EC;}
+  .mode-title{
+    font-weight:600;
+    font-size:0.9rem;
+    display:block;
+    margin-bottom:3px;
+  }
+  .mode-desc{
+    font-size:0.76rem;
+    color:var(--ink-soft);
+    line-height:1.3;
+  }
+
+  .run-btn{
+    width:100%;
+    margin-top:22px;
+    background:var(--teal-deep);
+    color:#F6F3EC;
+    border:none;
+    border-radius:10px;
+    padding:15px;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:0.95rem;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .run-btn:disabled{
+    background:#B9B2A0;
+    cursor:not-allowed;
+  }
+  .run-btn:not(:disabled):hover{background:var(--teal);}
+
+  .result{
+    margin-top:28px;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:0;
+    overflow:hidden;
+  }
+  .result-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:14px 18px;
+    border-bottom:1px solid var(--line);
+    background:#FBFAF6;
+  }
+  .result-head span{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.7rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--teal-deep);
+  }
+  .result-body{
+    display:flex;
+  }
+  .margin-rule{
+    width:26px;
+    flex-shrink:0;
+    border-right:1px solid var(--line);
+    position:relative;
+  }
+  .result-text{
+    padding:18px 20px;
+    font-size:0.92rem;
+    line-height:1.65;
+    white-space:pre-wrap;
+  }
+  .result-text b, .result-text strong{color:var(--teal-deep);}
+  .flag-line{
+    background:var(--flag-soft);
+    border-left:3px solid var(--flag);
+    padding:2px 8px;
+    margin:2px -8px;
+    border-radius:0 4px 4px 0;
+    display:inline-block;
+  }
+
+  .disclaimer{
+    margin-top:16px;
+    font-size:0.76rem;
+    color:var(--ink-soft);
+    line-height:1.5;
+    border-top:1px solid var(--line);
+    padding-top:14px;
+  }
+
+  .loading{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:20px;
+    font-size:0.88rem;
+    color:var(--ink-soft);
+  }
+  .dot{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--teal);
+    animation:pulse 1.1s infinite ease-in-out;
+  }
+  .dot:nth-child(2){animation-delay:.15s;}
+  .dot:nth-child(3){animation-delay:.3s;}
+  @keyframes pulse{
+    0%,80%,100%{opacity:.25;}
+    40%{opacity:1;}
+  }
+
+  .error-box{
+    margin-top:20px;
+    background:var(--flag-soft);
+    border:1px solid var(--flag);
+    color:var(--flag);
+    border-radius:10px;
+    padding:14px 16px;
+    font-size:0.85rem;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .dot{animation:none;}
+  }
+
+  .install-btn{
+    width:100%;
+    background:var(--card);
+    border:1px solid var(--teal);
+    color:var(--teal-deep);
+    border-radius:10px;
+    padding:12px;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:0.88rem;
+    cursor:pointer;
+    margin-bottom:20px;
+    transition:background .15s ease;
+  }
+  .install-btn:hover{background:#EEF3F1;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Lector de Resultados</h1>
+    <span class="tag">Lab · Rx</span>
+  </header>
+
+  <button id="installBtn" class="install-btn" style="display:none;">⬇ Instalar app</button>
+
+  <div id="uploadZone" class="upload-zone">
+    <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.webp">
+    <span class="upload-icon">⌁</span>
+    <div class="upload-label">Sube tu análisis (PDF o foto)</div>
+    <div class="upload-hint">Toca aquí o arrastra el archivo</div>
+  </div>
+  <div id="fileChipHolder"></div>
+
+  <div class="section-label">¿Qué necesitas?</div>
+  <div class="modes" id="modes">
+    <button class="mode-btn active" data-mode="resumen">
+      <span class="mode-title">Resumen general</span>
+      <span class="mode-desc">Panorama claro y breve de todo el documento</span>
+    </button>
+    <button class="mode-btn" data-mode="explica">
+      <span class="mode-title">Explica cada valor</span>
+      <span class="mode-desc">Qué mide cada prueba, en lenguaje simple</span>
+    </button>
+    <button class="mode-btn" data-mode="fuera_rango">
+      <span class="mode-title">Fuera de rango</span>
+      <span class="mode-desc">Solo lo que está alto, bajo o anormal</span>
+    </button>
+    <button class="mode-btn" data-mode="preguntas">
+      <span class="mode-title">Preguntas al médico</span>
+      <span class="mode-desc">Lista para llevar a tu próxima consulta</span>
+    </button>
+  </div>
+
+  <button class="run-btn" id="runBtn" disabled>Sube un archivo primero</button>
+
+  <div id="resultHolder"></div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+
+let deferredInstallPrompt = null;
+const installBtn = document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  installBtn.style.display = 'block';
+});
+installBtn.addEventListener('click', async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  installBtn.style.display = 'none';
+});
+window.addEventListener('appinstalled', () => {
+  installBtn.style.display = 'none';
+});
+
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const fileChipHolder = document.getElementById('fileChipHolder');
+const runBtn = document.getElementById('runBtn');
+const resultHolder = document.getElementById('resultHolder');
+const modesEl = document.getElementById('modes');
+
+let currentFile = null; // {base64, mediaType, name, kind}
+let currentMode = 'resumen';
+
+const modePrompts = {
+  resumen: `Da un resumen general y breve de este documento de análisis médico/laboratorio, en español sencillo, para una persona sin formación médica. Organiza el resumen en 3-5 puntos clave. No des diagnóstico, solo explica qué muestra el documento.`,
+  explica: `Explica en español sencillo qué mide cada prueba o valor incluido en este análisis de laboratorio, uno por uno, en 1-2 frases cada uno. Usa un formato de lista. No des diagnóstico.`,
+  fuera_rango: `Identifica ÚNICAMENTE los valores que están fuera del rango de referencia (altos o bajos) en este análisis. Para cada uno, indica: el nombre del valor, el resultado, el rango normal, y una explicación breve y sencilla de qué podría significar en general (sin diagnosticar). Marca cada valor fuera de rango empezando la línea con "⚑ ". Si todo está normal, dilo claramente.`,
+  preguntas: `Basándote en este análisis de laboratorio, genera una lista de 5-8 preguntas concretas y útiles que la persona podría llevar a su médico en la próxima consulta, en español, para entender mejor sus resultados y próximos pasos.`
+};
+
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+function handleFile(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64 = reader.result.split(',')[1];
+    const ext = file.name.split('.').pop().toLowerCase();
+    let mediaType = file.type;
+    let kind = 'document';
+    if (['jpg','jpeg'].includes(ext)) { mediaType = 'image/jpeg'; kind = 'image'; }
+    else if (ext === 'png') { mediaType = 'image/png'; kind = 'image'; }
+    else if (ext === 'webp') { mediaType = 'image/webp'; kind = 'image'; }
+    else { mediaType = 'application/pdf'; kind = 'document'; }
+
+    currentFile = { base64, mediaType, name: file.name, kind };
+    renderChip();
+    runBtn.disabled = false;
+    runBtn.textContent = 'Analizar documento';
+  };
+  reader.onerror = () => {
+    fileChipHolder.innerHTML = `<div class="error-box">No se pudo leer el archivo. Intenta de nuevo.</div>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderChip(){
+  fileChipHolder.innerHTML = `
+    <div class="file-chip">
+      <span>📄 ${currentFile.name}</span>
+      <button id="removeFile">Quitar</button>
+    </div>`;
+  document.getElementById('removeFile').addEventListener('click', () => {
+    currentFile = null;
+    fileChipHolder.innerHTML = '';
+    fileInput.value = '';
+    runBtn.disabled = true;
+    runBtn.textContent = 'Sube un archivo primero';
+    resultHolder.innerHTML = '';
+  });
+}
+
+modesEl.addEventListener('click', e => {
+  const btn = e.target.closest('.mode-btn');
+  if (!btn) return;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentMode = btn.dataset.mode;
+});
+
+runBtn.addEventListener('click', async () => {
+  if (!currentFile) return;
+  runBtn.disabled = true;
+  const originalText = runBtn.textContent;
+  runBtn.textContent = 'Analizando…';
+  resultHolder.innerHTML = `
+    <div class="result">
+      <div class="loading">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <span>Leyendo el documento…</span>
+      </div>
+    </div>`;
+
+  try {
+    const contentBlock = currentFile.kind === 'image'
+      ? { type: 'image', source: { type: 'base64', media_type: currentFile.mediaType, data: currentFile.base64 } }
+      : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: currentFile.base64 } };
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1500,
+        messages: [{
+          role: 'user',
+          content: [
+            contentBlock,
+            { type: 'text', text: modePrompts[currentMode] }
+          ]
+        }]
+      })
+    });
+
+    if (!response.ok) throw new Error('Error de red: ' + response.status);
+    const data = await response.json();
+    const text = data.content.map(b => b.text || '').join('\n').trim();
+
+    if (!text) throw new Error('No se pudo generar una respuesta.');
+
+    renderResult(text);
+  } catch (err) {
+    resultHolder.innerHTML = `<div class="error-box">Ocurrió un problema al analizar el documento. ${err.message || ''} Intenta de nuevo.</div>`;
+  } finally {
+    runBtn.disabled = false;
+    runBtn.textContent = originalText;
+  }
+});
+
+function escapeHtml(str){
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderResult(text){
+  const modeLabels = {
+    resumen: 'Resumen general',
+    explica: 'Explicación de valores',
+    fuera_rango: 'Valores fuera de rango',
+    preguntas: 'Preguntas para el médico'
+  };
+
+  const lines = text.split('\n').map(line => {
+    let escaped = escapeHtml(line);
+    escaped = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    if (escaped.trim().startsWith('⚑')) {
+      return `<div class="flag-line">${escaped}</div>`;
+    }
+    return escaped;
+  }).join('\n');
+
+  resultHolder.innerHTML = `
+    <div class="result">
+      <div class="result-head"><span>${modeLabels[currentMode]}</span></div>
+      <div class="result-body">
+        <div class="margin-rule"></div>
+        <div class="result-text">${lines}</div>
+      </div>
+    </div>
+    <div class="disclaimer">Esto no es un diagnóstico médico. Para interpretar tus resultados con certeza y decidir próximos pasos, consulta siempre con tu médico.</div>
+  `;
+}
+</script>
+</body>
+</html>
