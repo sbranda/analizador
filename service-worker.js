@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lector-resultados-v1';
+const CACHE_NAME = 'lector-resultados-v2';
 const APP_SHELL = [
   './index.html',
   './manifest.json',
@@ -26,7 +26,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Never cache API calls — always go to the network for live analysis.
-  if (url.hostname === 'api.anthropic.com') {
+  if (url.hostname === 'generativelanguage.googleapis.com') {
     return;
   }
 
