@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Resultados">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Lexend:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Lexend:wght@400;500;600&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --paper:#F6F3EC;
@@ -98,12 +98,18 @@
   body.theme-dark .run-btn,
   body.theme-sepia .run-btn{color:var(--paper);}
 
-  body.dyslexia-font{
+  body.font-lexend{
     --font-display:'Lexend',sans-serif;
     --font-body:'Lexend',sans-serif;
     --font-mono:'Lexend',sans-serif;
   }
-  body.dyslexia-font .result-text{letter-spacing:0.01em; line-height:1.8;}
+  body.font-lexend .result-text{letter-spacing:0.01em; line-height:1.8;}
+  body.font-atkinson{
+    --font-display:'Atkinson Hyperlegible',sans-serif;
+    --font-body:'Atkinson Hyperlegible',sans-serif;
+    --font-mono:'Atkinson Hyperlegible',sans-serif;
+  }
+  body.font-atkinson .result-text{letter-spacing:0.01em; line-height:1.8;}
 
   :focus-visible{
     outline:3px solid var(--teal);
@@ -235,6 +241,9 @@
     visibility:hidden;
   }
   *{box-sizing:border-box;}
+  button, input, select, textarea{
+    font-family:inherit;
+  }
   body{
     margin:0;
     background:var(--paper);
@@ -794,9 +803,14 @@
       </div>
       <span id="contrastNote" class="contrast-note" aria-live="polite"></span>
     </div>
-    <div class="a11y-row">
-      <span class="a11y-label" id="dyslexiaLabel">Fuente de lectura fácil</span>
-      <button type="button" id="dyslexiaSwitch" class="switch" role="switch" aria-checked="false" aria-labelledby="dyslexiaLabel"></button>
+    <div class="a11y-row a11y-row-wrap">
+      <span class="a11y-label" id="fontLabel">Tipo de letra</span>
+      <div class="a11y-btn-group" role="group" aria-labelledby="fontLabel">
+        <button type="button" class="a11y-btn" data-font="default" aria-pressed="true">Predeterminada</button>
+        <button type="button" class="a11y-btn" data-font="lexend" aria-pressed="false">Lexend</button>
+        <button type="button" class="a11y-btn" data-font="atkinson" aria-pressed="false">Atkinson</button>
+      </div>
+      <span class="contrast-note">Lexend y Atkinson Hyperlegible están diseñadas para mejorar la legibilidad y son buenas opciones si tienes dificultades de lectura o baja visión.</span>
     </div>
   </div>
 
@@ -1056,7 +1070,7 @@ resetAccent.addEventListener('click', () => {
 });
 
 const themeButtons = document.querySelectorAll('.a11y-btn[data-theme]');
-const dyslexiaSwitch = document.getElementById('dyslexiaSwitch');
+const fontButtons = document.querySelectorAll('.a11y-btn[data-font]');
 const scaleButtons = document.querySelectorAll('.a11y-btn[data-scale]');
 
 function safeGet(key){
@@ -1094,11 +1108,17 @@ themeButtons.forEach(btn => {
   });
 });
 
-dyslexiaSwitch.addEventListener('click', () => {
-  const isOn = dyslexiaSwitch.getAttribute('aria-checked') === 'true';
-  dyslexiaSwitch.setAttribute('aria-checked', String(!isOn));
-  document.body.classList.toggle('dyslexia-font', !isOn);
-  safeSet('a11y-dyslexia-font', String(!isOn));
+function applyFont(font){
+  document.body.classList.remove('font-lexend', 'font-atkinson');
+  if (font !== 'default') document.body.classList.add('font-' + font);
+  fontButtons.forEach(b => b.setAttribute('aria-pressed', b.dataset.font === font ? 'true' : 'false'));
+}
+
+fontButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    applyFont(btn.dataset.font);
+    safeSet('a11y-font', btn.dataset.font);
+  });
 });
 
 // Restaurar preferencias guardadas
@@ -1110,10 +1130,8 @@ dyslexiaSwitch.addEventListener('click', () => {
   }
   const savedTheme = safeGet('a11y-theme');
   if (savedTheme) applyTheme(savedTheme);
-  if (safeGet('a11y-dyslexia-font') === 'true') {
-    document.body.classList.add('dyslexia-font');
-    dyslexiaSwitch.setAttribute('aria-checked', 'true');
-  }
+  const savedFont = safeGet('a11y-font');
+  if (savedFont) applyFont(savedFont);
   const savedAccent = safeGet('a11y-accent');
   if (savedAccent) applyAccentColor(savedAccent);
 })();
