@@ -540,6 +540,22 @@
     .detect-status .spinner{animation:none;}
   }
 
+  @media print{
+    body *{visibility:hidden;}
+    .result, .result *, .disclaimer, .disclaimer *{visibility:visible;}
+    .result-tools{display:none !important;}
+    .result{
+      position:absolute;
+      top:0; left:0; width:100%;
+      box-shadow:none;
+      border:1px solid #000;
+    }
+    .disclaimer{
+      margin-top:14px;
+    }
+    .margin-rule{display:none;}
+  }
+
   .run-btn{
     width:100%;
     margin-top:24px;
@@ -1756,6 +1772,48 @@ function stopSpeaking(){
   speechOffset = 0;
 }
 
+// --- Copiar / Compartir / PDF ---
+function setupExportTools(){
+  const copyBtn = document.getElementById('copyBtn');
+  const shareBtn = document.getElementById('shareBtn');
+  const pdfBtn = document.getElementById('pdfBtn');
+  const resultTextEl = document.getElementById('resultTextEl');
+
+  copyBtn.addEventListener('click', async () => {
+    const text = resultTextEl.innerText;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const temp = document.createElement('textarea');
+      temp.value = text;
+      temp.style.position = 'fixed';
+      temp.style.opacity = '0';
+      document.body.appendChild(temp);
+      temp.select();
+      try { document.execCommand('copy'); } catch (e2) { /* no-op */ }
+      document.body.removeChild(temp);
+    }
+    const original = copyBtn.textContent;
+    copyBtn.textContent = '✓ Copiado';
+    setTimeout(() => { copyBtn.textContent = original; }, 1800);
+  });
+
+  shareBtn.addEventListener('click', async () => {
+    const text = resultTextEl.innerText;
+    const title = modeLabels[currentCategory][currentMode];
+    if (navigator.share) {
+      try { await navigator.share({ title, text }); }
+      catch (e) { /* el usuario canceló, no hacemos nada */ }
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(title + '\n\n' + text)}`, '_blank');
+    }
+  });
+
+  pdfBtn.addEventListener('click', () => {
+    window.print();
+  });
+}
+
 // --- Traducción ---
 const languageNames = {
   en: 'inglés', pt: 'portugués', fr: 'francés', it: 'italiano',
@@ -1863,6 +1921,11 @@ function renderResult(text){
         </select>
         <button type="button" id="translateBtn" class="speak-btn">🌐 Traducir</button>
       </div>
+      <div class="result-tools">
+        <button type="button" id="copyBtn" class="speak-btn">📋 Copiar</button>
+        <button type="button" id="shareBtn" class="speak-btn">📤 Compartir</button>
+        <button type="button" id="pdfBtn" class="speak-btn">📄 PDF</button>
+      </div>
       <div class="result-body">
         <div class="margin-rule"></div>
         <div class="result-text" id="resultTextEl">${renderResultText(text)}</div>
@@ -1873,6 +1936,7 @@ function renderResult(text){
 
   setupSpeakButton(text);
   setupTranslate();
+  setupExportTools();
 }
 </script>
 </body>
