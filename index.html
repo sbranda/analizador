@@ -424,6 +424,28 @@
     color:var(--ink-soft);
     margin-top:4px;
   }
+  .camera-btn{
+    display:block;
+    text-align:center;
+    background:var(--card);
+    border:2px solid var(--ink);
+    border-radius:12px;
+    padding:12px;
+    margin-top:10px;
+    font-weight:700;
+    font-size:0.88rem;
+    cursor:pointer;
+    box-shadow:3px 3px 0 var(--shadow);
+    transition:transform .1s ease, box-shadow .1s ease;
+  }
+  .camera-btn:hover{
+    transform:translate(-1px,-1px);
+    box-shadow:4px 4px 0 var(--shadow);
+  }
+  .camera-btn:active{
+    transform:translate(2px,2px);
+    box-shadow:1px 1px 0 var(--shadow);
+  }
   .file-chip{
     display:flex;
     align-items:center;
@@ -986,6 +1008,10 @@
     <div class="upload-label">Sube tu documento (PDF o foto)</div>
     <div class="upload-hint">Toca aquí o arrastra el archivo</div>
   </div>
+
+  <label for="cameraInput" class="camera-btn">📷 Tomar foto ahora</label>
+  <input type="file" id="cameraInput" accept="image/*" capture="environment" class="visually-hidden">
+
   <div id="fileChipHolder" aria-live="polite"></div>
   <div id="detectStatus" class="detect-status" aria-live="polite"></div>
 
@@ -1591,6 +1617,11 @@ uploadZone.addEventListener('drop', e => {
   if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
 });
 fileInput.addEventListener('change', e => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+const cameraInput = document.getElementById('cameraInput');
+cameraInput.addEventListener('change', e => {
   if (e.target.files.length) handleFile(e.target.files[0]);
 });
 
