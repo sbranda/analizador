@@ -1722,7 +1722,12 @@ const modePrompts = {
   judicial: {
     resumen_folio: `Este documento es un folio o expediente judicial. Da un resumen general y breve en español sencillo, para alguien sin formación legal: de qué trata el caso, en qué materia (civil, penal, laboral, etc.) y en qué etapa procesal se encuentra actualmente. Organiza en 3-5 puntos clave. No des asesoría legal, solo explica qué muestra el documento.`,
     partes_roles: `Identifica a todas las partes y personas mencionadas en este folio judicial: demandante, demandado, jueza/juez, fiscal, abogados, testigos, u otros roles relevantes. Para cada una, indica su nombre y su rol en el caso, en formato de lista, en español sencillo.`,
-    fechas_plazos: `Extrae ÚNICAMENTE las fechas y plazos importantes mencionados en este folio judicial: audiencias, notificaciones, vencimientos de plazos para responder o apelar, y cualquier fecha límite. Para cada una indica la fecha, qué evento es, y por qué importa. Marca los plazos que estén próximos a vencer o sean urgentes empezando la línea con "⚑ ". Usa formato de lista.`,
+    fechas_plazos: `Extrae ÚNICAMENTE las fechas y plazos importantes mencionados en este folio judicial: audiencias, notificaciones, vencimientos de plazos para responder o apelar, y cualquier fecha límite. Para cada una indica la fecha, qué evento es, y por qué importa. Marca los plazos que estén próximos a vencer o sean urgentes empezando la línea con "⚑ ". Usa formato de lista.
+
+Después de la lista, en una línea nueva agrega EXACTAMENTE este bloque (sin explicación adicional), con un arreglo JSON de esas mismas fechas para poder agregarlas a un calendario. El campo "fecha" debe ir en formato YYYY-MM-DD (si el año no está claro en el documento, usa el año actual). Si no hay fechas claras y concretas, deja el arreglo vacío.
+---EVENTOS---
+[{"titulo":"...", "fecha":"YYYY-MM-DD", "nota":"..."}]
+---FIN---`,
     proximos_pasos: `Basándote en el estado actual de este folio judicial, genera una lista de 4-7 próximos pasos concretos: qué acciones se esperan de la persona, qué documentos podría necesitar preparar, y qué preguntas debería hacerle a su abogado. En español sencillo. No es asesoría legal, son sugerencias generales de organización.`
   },
   apuntes: {
@@ -1951,8 +1956,9 @@ runBtn.addEventListener('click', async () => {
 
     if (!text) throw new Error('No se pudo generar una respuesta.');
 
-    renderResult(text);
-    saveHistoryEntry(text);
+    const { displayText, events } = extractCalendarEvents(text);
+    renderResult(displayText, events);
+    saveHistoryEntry(displayText);
   } catch (err) {
     resultHolder.innerHTML = `<div class="error-box">Ocurrió un problema al analizar el documento. ${err.message || ''} Intenta de nuevo.</div>`;
   } finally {
@@ -2153,6 +2159,67 @@ function setupTranslate(){
 
 let originalResultText = '';
 
+function setupCalendarButton(events){
+  const calendarBtn = document.getElementById('calendarBtn');
+  if (!calendarBtn) return;
+  calendarBtn.addEventListener('click', () => {
+    const icsContent = buildIcsFile(events);
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'fechas-documento-legal.ics';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  });
+}
+
+function extractCalendarEvents(text){
+  const match = text.match(/---EVENTOS---([\s\S]*?)---FIN---/);
+  if (!match) return { displayText: text, events: [] };
+
+  const displayText = text.replace(match[0], '').trim();
+  let events = [];
+  try {
+    const parsed = JSON.parse(match[1].trim());
+    events = Array.isArray(parsed) ? parsed.filter(e => e && e.fecha && /^\d{4}-\d{2}-\d{2}$/.test(e.fecha)) : [];
+  } catch (e) { events = []; }
+
+  return { displayText, events };
+}
+
+function buildIcsFile(events){
+  const pad = n => String(n).padStart(2, '0');
+  const now = new Date();
+  const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}T${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+  const veventBlocks = events.map((ev, i) => {
+    const dateCompact = ev.fecha.replace(/-/g, '');
+    const summary = (ev.titulo || 'Fecha del documento legal').replace(/\n/g, ' ');
+    const description = (ev.nota || '').replace(/\n/g, ' ');
+    return [
+      'BEGIN:VEVENT',
+      `UID:${stamp}-${i}@resumelo`,
+      `DTSTAMP:${stamp}Z`,
+      `DTSTART;VALUE=DATE:${dateCompact}`,
+      `SUMMARY:${summary}`,
+      description ? `DESCRIPTION:${description}` : null,
+      'END:VEVENT'
+    ].filter(Boolean).join('\r\n');
+  }).join('\r\n');
+
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Resumelo//ES',
+    'CALSCALE:GREGORIAN',
+    veventBlocks,
+    'END:VCALENDAR'
+  ].join('\r\n');
+}
+
 function renderResultText(text){
   const lines = text.split('\n').map(line => {
     let escaped = escapeHtml(line);
@@ -2165,8 +2232,9 @@ function renderResultText(text){
   return lines;
 }
 
-function renderResult(text){
+function renderResult(text, calendarEvents){
   originalResultText = text;
+  const events = calendarEvents || [];
 
   resultHolder.innerHTML = `
     <div class="result">
@@ -2191,18 +2259,21 @@ function renderResult(text){
         <button type="button" id="copyBtn" class="speak-btn">📋 Copiar</button>
         <button type="button" id="shareBtn" class="speak-btn">📤 Compartir</button>
         <button type="button" id="pdfBtn" class="speak-btn">📄 PDF</button>
+        ${events.length > 0 ? `<button type="button" id="calendarBtn" class="speak-btn">📅 Agregar ${events.length === 1 ? 'fecha' : events.length + ' fechas'} al calendario</button>` : ''}
       </div>
       <div class="result-body">
         <div class="margin-rule"></div>
         <div class="result-text" id="resultTextEl">${renderResultText(text)}</div>
       </div>
     </div>
+
     <div class="disclaimer">${disclaimers[currentCategory]}</div>
   `;
 
   setupSpeakButton(text);
   setupTranslate();
   setupExportTools();
+  if (events.length > 0) setupCalendarButton(events);
 }
 </script>
 </body>
