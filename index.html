@@ -511,6 +511,25 @@
     flex-shrink:0;
   }
   .speak-btn:hover{border-color:var(--teal-deep);}
+
+  .result-tools{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    padding:10px 18px;
+    border-bottom:2px solid var(--ink);
+    background:var(--card);
+  }
+  .translate-select{
+    background:var(--paper);
+    border:1.5px solid var(--ink);
+    border-radius:8px;
+    padding:5px 8px;
+    font-family:var(--font-body);
+    font-size:0.76rem;
+    font-weight:600;
+    color:var(--ink);
+  }
   .result-body{
     display:flex;
   }
@@ -1499,6 +1518,10 @@ function setupSpeakButton(text){
   speechFullText = text;
   speechOffset = 0;
   speechActive = false;
+  speakBtn.textContent = '🔊 Escuchar';
+
+  if (speakBtn.dataset.bound === 'true') return;
+  speakBtn.dataset.bound = 'true';
 
   speakBtn.addEventListener('click', () => {
     if (speechActive) {
@@ -1518,7 +1541,69 @@ function stopSpeaking(){
   speechOffset = 0;
 }
 
-function renderResult(text){
+// --- Traducción ---
+const languageNames = {
+  en: 'inglés', pt: 'portugués', fr: 'francés', it: 'italiano',
+  de: 'alemán', zh: 'chino mandarín', ar: 'árabe', ht: 'criollo haitiano'
+};
+let showingTranslation = false;
+
+function setupTranslate(){
+  const translateBtn = document.getElementById('translateBtn');
+  const translateLang = document.getElementById('translateLang');
+  const resultTextEl = document.getElementById('resultTextEl');
+  showingTranslation = false;
+
+  translateBtn.addEventListener('click', async () => {
+    if (showingTranslation) {
+      resultTextEl.innerHTML = renderResultText(originalResultText);
+      translateBtn.textContent = '🌐 Traducir';
+      translateLang.disabled = false;
+      showingTranslation = false;
+      stopSpeaking();
+      setupSpeakButton(originalResultText);
+      return;
+    }
+
+    const langCode = translateLang.value;
+    const langLabel = languageNames[langCode] || langCode;
+    translateBtn.disabled = true;
+    translateBtn.textContent = 'Traduciendo…';
+
+    try {
+      const response = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `Traduce el siguiente texto al ${langLabel}. Mantén el formato de lista, los saltos de línea, y conserva el símbolo "⚑" delante de las líneas que lo tengan. Responde solo con la traducción, sin comentarios adicionales:\n\n${originalResultText}`
+            }]
+          }]
+        })
+      });
+      if (!response.ok) throw new Error('Error de traducción');
+      const data = await response.json();
+      const translated = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('\n').trim();
+      if (!translated) throw new Error('Sin traducción');
+
+      resultTextEl.innerHTML = renderResultText(translated);
+      translateBtn.textContent = '↺ Ver original';
+      translateLang.disabled = true;
+      showingTranslation = true;
+      stopSpeaking();
+      setupSpeakButton(translated);
+    } catch (err) {
+      resultTextEl.insertAdjacentHTML('beforeend', `<div class="error-box" style="margin-top:10px;">No se pudo traducir. Intenta de nuevo.</div>`);
+    } finally {
+      translateBtn.disabled = false;
+    }
+  });
+}
+
+let originalResultText = '';
+
+function renderResultText(text){
   const lines = text.split('\n').map(line => {
     let escaped = escapeHtml(line);
     escaped = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -1527,22 +1612,41 @@ function renderResult(text){
     }
     return escaped;
   }).join('\n');
+  return lines;
+}
+
+function renderResult(text){
+  originalResultText = text;
 
   resultHolder.innerHTML = `
     <div class="result">
       <div class="result-head">
         <span>${modeLabels[currentCategory][currentMode]}</span>
+      </div>
+      <div class="result-tools">
         <button type="button" id="speakBtn" class="speak-btn" aria-label="Escuchar el resultado en voz alta">🔊 Escuchar</button>
+        <select id="translateLang" class="translate-select" aria-label="Elegir idioma para traducir">
+          <option value="en">English</option>
+          <option value="pt">Português</option>
+          <option value="fr">Français</option>
+          <option value="it">Italiano</option>
+          <option value="de">Deutsch</option>
+          <option value="zh">中文</option>
+          <option value="ar">العربية</option>
+          <option value="ht">Kreyòl</option>
+        </select>
+        <button type="button" id="translateBtn" class="speak-btn">🌐 Traducir</button>
       </div>
       <div class="result-body">
         <div class="margin-rule"></div>
-        <div class="result-text">${lines}</div>
+        <div class="result-text" id="resultTextEl">${renderResultText(text)}</div>
       </div>
     </div>
     <div class="disclaimer">${disclaimers[currentCategory]}</div>
   `;
 
   setupSpeakButton(text);
+  setupTranslate();
 }
 </script>
 </body>
