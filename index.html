@@ -247,6 +247,16 @@
     grid-template-columns:1fr 1fr;
     gap:12px;
   }
+  .level-toggle{
+    grid-template-columns:1fr 1fr 1fr;
+  }
+  .level-toggle .mode-btn{
+    padding:10px 8px;
+    text-align:center;
+  }
+  .level-toggle .mode-desc{
+    font-size:0.68rem;
+  }
   .mode-btn{
     background:var(--card);
     border:2px solid var(--ink);
@@ -662,6 +672,22 @@
     </button>
   </div>
 
+  <div class="section-label" id="levelLabel">Nivel de explicación</div>
+  <div class="modes level-toggle" id="levelToggle" role="group" aria-labelledby="levelLabel">
+    <button class="mode-btn active" data-level="sencilla" aria-pressed="true">
+      <span class="mode-title">Sencilla</span>
+      <span class="mode-desc">Palabras simples, oraciones cortas</span>
+    </button>
+    <button class="mode-btn" data-level="media" aria-pressed="false">
+      <span class="mode-title">Media</span>
+      <span class="mode-desc">Lenguaje claro, algo de detalle</span>
+    </button>
+    <button class="mode-btn" data-level="avanzada" aria-pressed="false">
+      <span class="mode-title">Avanzada</span>
+      <span class="mode-desc">Con términos técnicos y detalle</span>
+    </button>
+  </div>
+
   <div class="section-label" id="needLabelMedico">¿Qué necesitas?</div>
   <div class="modes" id="modesMedico" role="group" aria-labelledby="needLabelMedico">
     <button class="mode-btn active" data-mode="resumen" aria-pressed="true">
@@ -895,6 +921,7 @@ const fileChipHolder = document.getElementById('fileChipHolder');
 const runBtn = document.getElementById('runBtn');
 const resultHolder = document.getElementById('resultHolder');
 const categoryToggle = document.getElementById('categoryToggle');
+const levelToggle = document.getElementById('levelToggle');
 const modesMedico = document.getElementById('modesMedico');
 const modesJudicial = document.getElementById('modesJudicial');
 const modesApuntes = document.getElementById('modesApuntes');
@@ -903,6 +930,13 @@ const headerTag = document.getElementById('headerTag');
 let currentFile = null; // {base64, mediaType, name}
 let currentCategory = 'medico';
 let currentMode = 'resumen';
+let currentLevel = 'sencilla';
+
+const levelInstructions = {
+  sencilla: 'IMPORTANTE: Explica esto de la forma MÁS SENCILLA posible, pensando en alguien con dificultades de comprensión lectora. Usa palabras muy simples y cotidianas, oraciones cortas (máximo ~12 palabras), una idea por oración. Evita términos técnicos; si uno es imposible de evitar, explícalo de inmediato entre paréntesis con una palabra simple. No uses metáforas complicadas ni oraciones subordinadas largas.',
+  media: 'Explica esto con lenguaje claro y cotidiano, como se lo explicarías a un adulto sin formación especializada en el tema. Puedes usar algún término técnico si lo explicas brevemente la primera vez que aparece.',
+  avanzada: 'Puedes usar terminología técnica propia del área sin necesidad de simplificarla, y dar más detalle y precisión, como si hablaras con alguien familiarizado con el tema.'
+};
 
 const categoryConfig = {
   medico: { container: 'modesMedico', defaultMode: 'resumen', tag: 'Lab · Rx' },
@@ -978,6 +1012,15 @@ categoryToggle.addEventListener('click', e => {
   firstModeBtn.classList.add('active');
   firstModeBtn.setAttribute('aria-pressed', 'true');
   resultHolder.innerHTML = '';
+});
+
+levelToggle.addEventListener('click', e => {
+  const btn = e.target.closest('.mode-btn');
+  if (!btn) return;
+  levelToggle.querySelectorAll('.mode-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+  btn.classList.add('active');
+  btn.setAttribute('aria-pressed', 'true');
+  currentLevel = btn.dataset.level;
 });
 
 uploadZone.addEventListener('click', () => fileInput.click());
@@ -1060,6 +1103,7 @@ runBtn.addEventListener('click', async () => {
     </div>`;
 
   try {
+    const fullPrompt = `${modePrompts[currentCategory][currentMode]}\n\n${levelInstructions[currentLevel]}`;
     const response = await fetch(GEMINI_URL, {
       method: 'POST',
       headers: {
@@ -1069,7 +1113,7 @@ runBtn.addEventListener('click', async () => {
         contents: [{
           parts: [
             { inlineData: { mimeType: currentFile.mediaType, data: currentFile.base64 } },
-            { text: modePrompts[currentCategory][currentMode] }
+            { text: fullPrompt }
           ]
         }]
       })
