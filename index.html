@@ -1091,7 +1091,7 @@
     <button class="mode-btn active" data-cat="medico" aria-pressed="true">
       <span class="mode-icon" aria-hidden="true">🩺</span>
       <span class="mode-title">Análisis médico</span>
-      <span class="mode-desc">Ej: laboratorio, radiografía, tomografía</span>
+      <span class="mode-desc">Ej: laboratorio, radiografía, tensiómetro</span>
     </button>
     <button class="mode-btn" data-cat="judicial" aria-pressed="false">
       <span class="mode-icon" aria-hidden="true">⚖️</span>
@@ -1138,6 +1138,10 @@
     <button class="mode-btn" data-mode="preguntas" aria-pressed="false">
       <span class="mode-title">Preguntas al médico</span>
       <span class="mode-desc">Lista para llevar a tu próxima consulta</span>
+    </button>
+    <button class="mode-btn" data-mode="dispositivo" aria-pressed="false">
+      <span class="mode-title">Leer dispositivo</span>
+      <span class="mode-desc">Foto de tensiómetro, glucómetro, oxímetro</span>
     </button>
   </div>
 
@@ -1701,7 +1705,8 @@ const modePrompts = {
     resumen: `Da un resumen general y breve de este documento médico (puede ser un análisis de laboratorio o un informe de un estudio de imagen como radiografía, tomografía o resonancia), en español sencillo, para una persona sin formación médica. Organiza el resumen en 3-5 puntos clave. No des diagnóstico, solo explica qué muestra el documento.`,
     explica: `Explica en español sencillo cada prueba, valor, o hallazgo mencionado en este documento (sea un análisis de laboratorio o un informe de imagen como radiografía, tomografía o resonancia), uno por uno, en 1-2 frases cada uno. Usa un formato de lista. No des diagnóstico.`,
     fuera_rango: `Identifica ÚNICAMENTE los resultados anormales de este documento: si es un análisis de laboratorio, los valores fuera del rango de referencia (altos o bajos); si es un informe de imagen (radiografía, tomografía, resonancia), los hallazgos que el propio informe describe como anormales o dignos de seguimiento. Para cada uno, indica de qué se trata y una explicación breve y sencilla de qué podría significar en general (sin diagnosticar). Marca cada uno empezando la línea con "⚑ ". Si todo está normal, dilo claramente.`,
-    preguntas: `Basándote en este documento médico (análisis de laboratorio o informe de imagen), genera una lista de 5-8 preguntas concretas y útiles que la persona podría llevar a su médico en la próxima consulta, en español, para entender mejor sus resultados y próximos pasos.`
+    preguntas: `Basándote en este documento médico (análisis de laboratorio o informe de imagen), genera una lista de 5-8 preguntas concretas y útiles que la persona podría llevar a su médico en la próxima consulta, en español, para entender mejor sus resultados y próximos pasos.`,
+    dispositivo: `Esta es una foto de la pantalla de un dispositivo médico casero (puede ser un tensiómetro/monitor de presión arterial, un glucómetro, un oxímetro, un termómetro, o similar). Lee con cuidado los números que muestra la pantalla. En español sencillo: 1) indica qué números ves y qué mide cada uno (ej: presión sistólica, diastólica, pulso, glucosa, saturación de oxígeno, temperatura); 2) menciona, de forma general y educativa, en qué rango típico para un adulto sano suelen estar esos valores, y si la lectura parece estar dentro o fuera de ese rango típico. Marca con "⚑ " cualquier valor que esté claramente fuera de los rangos típicos. Aclara siempre que esto es información general, no un diagnóstico, y que ante cualquier valor preocupante o duda debe consultar a un profesional de salud. Si la foto no es de un dispositivo médico o no se alcanzan a leer los números con claridad, dilo directamente.`
   },
   judicial: {
     resumen_folio: `Este documento es un folio o expediente judicial. Da un resumen general y breve en español sencillo, para alguien sin formación legal: de qué trata el caso, en qué materia (civil, penal, laboral, etc.) y en qué etapa procesal se encuentra actualmente. Organiza en 3-5 puntos clave. No des asesoría legal, solo explica qué muestra el documento.`,
@@ -1722,7 +1727,8 @@ const modeLabels = {
     resumen: 'Resumen general',
     explica: 'Explicación de valores',
     fuera_rango: 'Valores fuera de rango',
-    preguntas: 'Preguntas para el médico'
+    preguntas: 'Preguntas para el médico',
+    dispositivo: 'Lectura del dispositivo'
   },
   judicial: {
     resumen_folio: 'Resumen del folio',
