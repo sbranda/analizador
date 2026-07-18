@@ -1582,10 +1582,21 @@ function setupTranslate(){
           }]
         })
       });
-      if (!response.ok) throw new Error('Error de traducción');
+      if (!response.ok) {
+        const errBody = await response.text();
+        throw new Error(`Error de traducción (${response.status}): ${errBody.slice(0, 200)}`);
+      }
       const data = await response.json();
+
+      if (data.promptFeedback?.blockReason) {
+        throw new Error(`Bloqueado por seguridad: ${data.promptFeedback.blockReason}`);
+      }
+
       const translated = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('\n').trim();
-      if (!translated) throw new Error('Sin traducción');
+      if (!translated) {
+        const finishReason = data.candidates?.[0]?.finishReason || 'desconocido';
+        throw new Error(`Sin traducción (motivo: ${finishReason})`);
+      }
 
       resultTextEl.innerHTML = renderResultText(translated);
       translateBtn.textContent = '↺ Ver original';
@@ -1594,7 +1605,7 @@ function setupTranslate(){
       stopSpeaking();
       setupSpeakButton(translated);
     } catch (err) {
-      resultTextEl.insertAdjacentHTML('beforeend', `<div class="error-box" style="margin-top:10px;">No se pudo traducir. Intenta de nuevo.</div>`);
+      resultTextEl.insertAdjacentHTML('beforeend', `<div class="error-box" style="margin-top:10px;">No se pudo traducir. ${err.message || ''}</div>`);
     } finally {
       translateBtn.disabled = false;
     }
