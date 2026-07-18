@@ -127,6 +127,113 @@
     left:0;
     top:0;
   }
+
+  .tutorial-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:2000;
+  }
+  .tutorial-overlay[hidden]{
+    display:none;
+  }
+  .tutorial-card{
+    background:var(--card);
+    border:2px solid var(--ink);
+    border-radius:var(--radius);
+    box-shadow:6px 6px 0 var(--shadow);
+    max-width:400px;
+    width:100%;
+    padding:28px 24px 22px;
+    text-align:center;
+  }
+  .tutorial-icon{
+    font-size:2.4rem;
+    margin-bottom:10px;
+  }
+  .tutorial-title{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:1.3rem;
+    color:var(--teal-deep);
+    margin:0 0 10px;
+  }
+  .tutorial-text{
+    font-size:0.94rem;
+    line-height:1.55;
+    color:var(--ink);
+    margin:0 0 18px;
+  }
+  .tutorial-dots{
+    display:flex;
+    justify-content:center;
+    gap:7px;
+    margin-bottom:20px;
+  }
+  .tutorial-dots span{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--line);
+    display:inline-block;
+  }
+  .tutorial-dots span.active{
+    background:var(--accent);
+  }
+  .tutorial-nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .tutorial-nav-right{
+    display:flex;
+    gap:8px;
+  }
+  .tutorial-skip{
+    background:none;
+    border:none;
+    color:var(--ink-soft);
+    font-family:var(--font-body);
+    font-size:0.85rem;
+    font-weight:600;
+    cursor:pointer;
+    text-decoration:underline;
+  }
+  .tutorial-prev, .tutorial-next{
+    border:2px solid var(--ink);
+    border-radius:10px;
+    padding:9px 16px;
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:0.88rem;
+    cursor:pointer;
+    box-shadow:3px 3px 0 var(--shadow);
+    transition:transform .1s ease, box-shadow .1s ease;
+  }
+  .tutorial-prev{
+    background:var(--card);
+    color:var(--ink);
+  }
+  .tutorial-next{
+    background:var(--teal-deep);
+    color:var(--paper);
+  }
+  .tutorial-prev:hover, .tutorial-next:hover{
+    transform:translate(-1px,-1px);
+    box-shadow:4px 4px 0 var(--shadow);
+  }
+  .tutorial-prev:active, .tutorial-next:active{
+    transform:translate(2px,2px);
+    box-shadow:1px 1px 0 var(--shadow);
+  }
+  .tutorial-prev:disabled{
+    visibility:hidden;
+  }
   *{box-sizing:border-box;}
   body{
     margin:0;
@@ -483,7 +590,9 @@
   .header-right{
     display:flex;
     align-items:center;
-    gap:8px;
+    gap:6px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
   }
   .a11y-toggle{
     background:var(--paper);
@@ -625,11 +734,29 @@
 </head>
 <body>
 <a href="#main" class="skip-link">Saltar al contenido principal</a>
+
+<div id="tutorialOverlay" class="tutorial-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+  <div class="tutorial-card">
+    <div class="tutorial-icon" id="tutorialIcon" aria-hidden="true">📄</div>
+    <h2 id="tutorialTitle" class="tutorial-title">Título</h2>
+    <p id="tutorialText" class="tutorial-text">Texto</p>
+    <div class="tutorial-dots" id="tutorialDots" aria-hidden="true"></div>
+    <div class="tutorial-nav">
+      <button type="button" id="tutorialSkip" class="tutorial-skip">Saltar</button>
+      <div class="tutorial-nav-right">
+        <button type="button" id="tutorialPrev" class="tutorial-prev">Atrás</button>
+        <button type="button" id="tutorialNext" class="tutorial-next">Siguiente</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="wrap">
   <header>
     <h1>Lector de Documentos</h1>
     <div class="header-right">
       <span class="tag" id="headerTag">Lab · Rx</span>
+      <button id="helpToggle" class="a11y-toggle" aria-label="Ver tutorial rápido">? Ayuda</button>
       <button id="a11yToggle" class="a11y-toggle" aria-expanded="false" aria-controls="a11yPanel" aria-label="Abrir opciones de accesibilidad">Aa ⚙</button>
     </div>
   </header>
@@ -792,6 +919,72 @@
 // La clave se arma en partes para evitar que el escaneo de secretos de GitHub la detecte y bloquee el commit.
 const GEMINI_API_KEY = ['AQ.Ab8RN6L-ra0qXGcCjc', '-r4U0XusAA7N8b7HTjH6dYLcNrdtN5og'].join('');
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+
+// --- Tutorial rápido ---
+const tutorialSlides = [
+  { icon: '📄', title: '¡Bienvenido!', text: 'Esta app analiza y resume tus documentos: análisis médicos, documentos legales o apuntes de estudio. Te mostramos rápido cómo usarla.' },
+  { icon: '⌁', title: '1. Sube tu documento', text: 'Toca el recuadro punteado para subir un PDF o una foto. Puede ser un análisis médico, un documento legal, o tus apuntes.' },
+  { icon: '🔍', title: '2. Detección automática', text: 'La app detecta sola qué tipo de documento es y elige la categoría correcta. Si se equivoca, solo toca otra opción arriba.' },
+  { icon: '🎚️', title: '3. Elige el nivel', text: 'Elige qué tan sencilla o detallada quieres la explicación: Sencilla, Media o Avanzada.' },
+  { icon: '✅', title: '4. Elige qué necesitas', text: 'Por ejemplo: un resumen general, las preguntas para tu médico, o los puntos clave. Luego toca "Analizar documento".' },
+  { icon: 'Aa', title: '5. Personaliza la app', text: 'Toca "Aa ⚙" en cualquier momento para ajustar el tamaño del texto, el tema de color, o activar una fuente de lectura fácil.' }
+];
+let tutorialIndex = 0;
+const tutorialOverlay = document.getElementById('tutorialOverlay');
+const tutorialIcon = document.getElementById('tutorialIcon');
+const tutorialTitle = document.getElementById('tutorialTitle');
+const tutorialText = document.getElementById('tutorialText');
+const tutorialDots = document.getElementById('tutorialDots');
+const tutorialPrev = document.getElementById('tutorialPrev');
+const tutorialNext = document.getElementById('tutorialNext');
+const tutorialSkip = document.getElementById('tutorialSkip');
+const helpToggle = document.getElementById('helpToggle');
+
+function renderTutorialSlide(){
+  const slide = tutorialSlides[tutorialIndex];
+  tutorialIcon.textContent = slide.icon;
+  tutorialTitle.textContent = slide.title;
+  tutorialText.textContent = slide.text;
+  tutorialDots.innerHTML = tutorialSlides.map((_, i) =>
+    `<span class="${i === tutorialIndex ? 'active' : ''}"></span>`
+  ).join('');
+  tutorialPrev.disabled = tutorialIndex === 0;
+  tutorialNext.textContent = tutorialIndex === tutorialSlides.length - 1 ? 'Empezar' : 'Siguiente';
+}
+
+function openTutorial(){
+  tutorialIndex = 0;
+  renderTutorialSlide();
+  tutorialOverlay.removeAttribute('hidden');
+}
+
+function closeTutorial(){
+  tutorialOverlay.setAttribute('hidden', '');
+  try { localStorage.setItem('tutorial-seen', 'true'); } catch(e) { /* no-op */ }
+}
+
+tutorialNext.addEventListener('click', () => {
+  if (tutorialIndex === tutorialSlides.length - 1) {
+    closeTutorial();
+  } else {
+    tutorialIndex++;
+    renderTutorialSlide();
+  }
+});
+tutorialPrev.addEventListener('click', () => {
+  if (tutorialIndex > 0) {
+    tutorialIndex--;
+    renderTutorialSlide();
+  }
+});
+tutorialSkip.addEventListener('click', closeTutorial);
+helpToggle.addEventListener('click', openTutorial);
+
+(function maybeShowTutorialOnLoad(){
+  let seen = null;
+  try { seen = localStorage.getItem('tutorial-seen'); } catch(e) { /* no-op */ }
+  if (!seen) openTutorial();
+})();
 
 // --- Accesibilidad ---
 const a11yToggle = document.getElementById('a11yToggle');
