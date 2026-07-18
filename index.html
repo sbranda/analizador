@@ -1450,7 +1450,9 @@ function escapeHtml(str){
 }
 
 // --- Leer en voz alta ---
-let currentUtterance = null;
+let speechFullText = '';
+let speechOffset = 0;
+let speechActive = false;
 
 function pickSpanishVoice(){
   const voices = speechSynthesis.getVoices();
@@ -1459,43 +1461,61 @@ function pickSpanishVoice(){
          null;
 }
 
+function speakFrom(offset, speakBtn){
+  const chunk = speechFullText.slice(offset);
+  if (!chunk.trim()) { speakBtn.textContent = '🔊 Escuchar'; speechActive = false; return; }
+
+  const utterance = new SpeechSynthesisUtterance(chunk);
+  const voice = pickSpanishVoice();
+  if (voice) utterance.voice = voice;
+  utterance.lang = voice ? voice.lang : 'es-ES';
+  utterance.rate = 0.95;
+
+  utterance.onboundary = (e) => {
+    if (e.charIndex !== undefined) speechOffset = offset + e.charIndex;
+  };
+  utterance.onend = () => {
+    speakBtn.textContent = '🔊 Escuchar';
+    speechActive = false;
+    speechOffset = 0;
+  };
+  utterance.onerror = () => {
+    speakBtn.textContent = '🔊 Escuchar';
+    speechActive = false;
+  };
+
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utterance);
+  speakBtn.textContent = '⏸ Pausar';
+  speechActive = true;
+}
+
 function setupSpeakButton(text){
   const speakBtn = document.getElementById('speakBtn');
   if (!speakBtn || !('speechSynthesis' in window)) {
     if (speakBtn) speakBtn.style.display = 'none';
     return;
   }
+  speechFullText = text;
+  speechOffset = 0;
+  speechActive = false;
 
   speakBtn.addEventListener('click', () => {
-    if (speechSynthesis.speaking && !speechSynthesis.paused) {
-      speechSynthesis.pause();
+    if (speechActive) {
+      // "Pausar": detenemos por completo (más confiable entre navegadores) pero recordamos dónde íbamos
+      speechSynthesis.cancel();
+      speechActive = false;
       speakBtn.textContent = '▶ Continuar';
       return;
     }
-    if (speechSynthesis.paused) {
-      speechSynthesis.resume();
-      speakBtn.textContent = '⏸ Pausar';
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    const voice = pickSpanishVoice();
-    if (voice) utterance.voice = voice;
-    utterance.lang = voice ? voice.lang : 'es-ES';
-    utterance.rate = 0.95;
-
-    utterance.onend = () => { speakBtn.textContent = '🔊 Escuchar'; };
-    utterance.onerror = () => { speakBtn.textContent = '🔊 Escuchar'; };
-
-    currentUtterance = utterance;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(utterance);
-    speakBtn.textContent = '⏸ Pausar';
+    speakFrom(speechOffset, speakBtn);
   });
 }
 
 function stopSpeaking(){
   if ('speechSynthesis' in window) speechSynthesis.cancel();
+  speechActive = false;
+  speechOffset = 0;
 }
 
 function renderResult(text){
