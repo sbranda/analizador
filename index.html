@@ -288,10 +288,40 @@
     display:block;
     margin-bottom:3px;
   }
+  .mode-icon{
+    font-size:1.3rem;
+    display:block;
+    margin-bottom:4px;
+  }
   .mode-desc{
     font-size:0.78rem;
     color:var(--ink-soft);
     line-height:1.3;
+  }
+
+  .detect-status{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:0.85rem;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin-top:10px;
+    min-height:0;
+  }
+  .detect-status.found{
+    color:var(--teal-deep);
+  }
+  .detect-status .spinner{
+    width:14px; height:14px;
+    border:2px solid var(--line);
+    border-top-color:var(--teal);
+    border-radius:50%;
+    animation:spin .7s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce){
+    .detect-status .spinner{animation:none;}
   }
 
   .run-btn{
@@ -655,20 +685,24 @@
     <div class="upload-hint">Toca aquí o arrastra el archivo</div>
   </div>
   <div id="fileChipHolder" aria-live="polite"></div>
+  <div id="detectStatus" class="detect-status" aria-live="polite"></div>
 
   <div class="section-label" id="categoryLabel">Tipo de documento</div>
   <div class="modes" id="categoryToggle" role="group" aria-labelledby="categoryLabel">
     <button class="mode-btn active" data-cat="medico" aria-pressed="true">
+      <span class="mode-icon" aria-hidden="true">🩺</span>
       <span class="mode-title">Análisis médico</span>
-      <span class="mode-desc">Laboratorio, resultados clínicos</span>
+      <span class="mode-desc">Ej: análisis de sangre, laboratorio</span>
     </button>
     <button class="mode-btn" data-cat="judicial" aria-pressed="false">
-      <span class="mode-title">Folio judicial</span>
-      <span class="mode-desc">Expedientes, resoluciones, causas</span>
+      <span class="mode-icon" aria-hidden="true">⚖️</span>
+      <span class="mode-title">Documento legal</span>
+      <span class="mode-desc">Ej: demanda, sentencia, expediente</span>
     </button>
     <button class="mode-btn" data-cat="apuntes" aria-pressed="false">
+      <span class="mode-icon" aria-hidden="true">📝</span>
       <span class="mode-title">Apuntes</span>
-      <span class="mode-desc">Notas de clase, lecturas, estudio</span>
+      <span class="mode-desc">Ej: notas de clase, resúmenes</span>
     </button>
   </div>
 
@@ -940,7 +974,7 @@ const levelInstructions = {
 
 const categoryConfig = {
   medico: { container: 'modesMedico', defaultMode: 'resumen', tag: 'Lab · Rx' },
-  judicial: { container: 'modesJudicial', defaultMode: 'resumen_folio', tag: 'Legal · Folio' },
+  judicial: { container: 'modesJudicial', defaultMode: 'resumen_folio', tag: 'Legal · Doc' },
   apuntes: { container: 'modesApuntes', defaultMode: 'resumen_apuntes', tag: 'Notas · Estudio' }
 };
 const modeContainers = { modesMedico, modesJudicial, modesApuntes };
@@ -993,13 +1027,13 @@ const disclaimers = {
   apuntes: 'Revisa siempre este resumen contra tus apuntes originales y el material del curso antes de un examen — puede omitir detalles importantes.'
 };
 
-categoryToggle.addEventListener('click', e => {
-  const btn = e.target.closest('.mode-btn');
+function selectCategory(cat){
+  const btn = document.querySelector(`#categoryToggle .mode-btn[data-cat="${cat}"]`);
   if (!btn) return;
   document.querySelectorAll('#categoryToggle .mode-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
   btn.classList.add('active');
   btn.setAttribute('aria-pressed', 'true');
-  currentCategory = btn.dataset.cat;
+  currentCategory = cat;
 
   const config = categoryConfig[currentCategory];
   Object.values(modeContainers).forEach(el => { el.style.display = 'none'; });
@@ -1012,7 +1046,52 @@ categoryToggle.addEventListener('click', e => {
   firstModeBtn.classList.add('active');
   firstModeBtn.setAttribute('aria-pressed', 'true');
   resultHolder.innerHTML = '';
+}
+
+categoryToggle.addEventListener('click', e => {
+  const btn = e.target.closest('.mode-btn');
+  if (!btn) return;
+  selectCategory(btn.dataset.cat);
 });
+
+async function detectCategory(){
+  if (!currentFile) return;
+  const detectStatus = document.getElementById('detectStatus');
+  detectStatus.innerHTML = '<span class="spinner" aria-hidden="true"></span> Detectando tipo de documento…';
+  detectStatus.classList.remove('found');
+
+  const classifyPrompt = 'Mira este documento y responde ÚNICAMENTE con una de estas tres palabras exactas, sin nada más: "medico" si es un análisis médico o de laboratorio; "judicial" si es un documento legal (demanda, sentencia, expediente, contrato, notificación); "apuntes" si son notas de clase, resúmenes de estudio o material educativo. Si no estás seguro, elige la opción más probable. Responde solo con la palabra, sin puntuación ni explicación.';
+
+  try {
+    const response = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { inlineData: { mimeType: currentFile.mediaType, data: currentFile.base64 } },
+            { text: classifyPrompt }
+          ]
+        }]
+      })
+    });
+    if (!response.ok) throw new Error('detect failed');
+    const data = await response.json();
+    const raw = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim().toLowerCase();
+    const detected = ['medico', 'judicial', 'apuntes'].find(cat => raw.includes(cat));
+
+    if (detected) {
+      selectCategory(detected);
+      const labels = { medico: 'Análisis médico', judicial: 'Documento legal', apuntes: 'Apuntes' };
+      detectStatus.textContent = `✓ Detectamos: ${labels[detected]} — cambia la opción arriba si no es correcto`;
+      detectStatus.classList.add('found');
+    } else {
+      detectStatus.textContent = 'No pudimos detectar el tipo automáticamente — elige uno arriba.';
+    }
+  } catch (err) {
+    detectStatus.textContent = 'No pudimos detectar el tipo automáticamente — elige uno arriba.';
+  }
+}
 
 levelToggle.addEventListener('click', e => {
   const btn = e.target.closest('.mode-btn');
@@ -1055,6 +1134,7 @@ function handleFile(file){
     renderChip();
     runBtn.disabled = false;
     runBtn.textContent = 'Analizar documento';
+    detectCategory();
   };
   reader.onerror = () => {
     fileChipHolder.innerHTML = `<div class="error-box">No se pudo leer el archivo. Intenta de nuevo.</div>`;
@@ -1075,6 +1155,7 @@ function renderChip(){
     runBtn.disabled = true;
     runBtn.textContent = 'Sube un archivo primero';
     resultHolder.innerHTML = '';
+    document.getElementById('detectStatus').textContent = '';
   });
 }
 
