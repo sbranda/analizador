@@ -240,6 +240,106 @@
   .tutorial-prev:disabled{
     visibility:hidden;
   }
+
+  .history-card{
+    background:var(--card);
+    border:2px solid var(--ink);
+    border-radius:var(--radius);
+    box-shadow:6px 6px 0 var(--shadow);
+    max-width:480px;
+    width:100%;
+    max-height:85vh;
+    display:flex;
+    flex-direction:column;
+    padding:22px 20px;
+  }
+  .history-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:4px;
+  }
+  .history-header .tutorial-title{margin:0;}
+  .history-note{
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    margin:2px 0 14px;
+  }
+  .history-list{
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-bottom:14px;
+    flex:1;
+  }
+  .history-empty{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:0.88rem;
+    padding:30px 10px;
+  }
+  .history-entry{
+    border:2px solid var(--ink);
+    border-radius:12px;
+    background:var(--paper);
+    overflow:hidden;
+  }
+  .history-entry-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 12px;
+    cursor:pointer;
+    text-align:left;
+    width:100%;
+    background:none;
+    border:none;
+  }
+  .history-entry-icon{font-size:1.2rem; flex-shrink:0;}
+  .history-entry-info{flex:1; min-width:0;}
+  .history-entry-title{
+    font-weight:700;
+    font-size:0.88rem;
+    display:block;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .history-entry-meta{
+    font-size:0.72rem;
+    color:var(--ink-soft);
+    display:block;
+  }
+  .history-entry-delete{
+    background:none;
+    border:none;
+    color:var(--flag);
+    font-size:1rem;
+    cursor:pointer;
+    flex-shrink:0;
+    padding:4px 6px;
+  }
+  .history-entry-body{
+    padding:0 14px 14px;
+    font-size:0.85rem;
+    line-height:1.55;
+    white-space:pre-wrap;
+    border-top:1px solid var(--line);
+    margin-top:0;
+    padding-top:10px;
+  }
+  .history-clear-all{
+    background:none;
+    border:2px solid var(--flag);
+    color:var(--flag);
+    border-radius:10px;
+    padding:10px;
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:0.85rem;
+    cursor:pointer;
+  }
   *{box-sizing:border-box;}
   button, input, select, textarea{
     font-family:inherit;
@@ -792,11 +892,24 @@
   </div>
 </div>
 
+<div id="historyOverlay" class="tutorial-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+  <div class="history-card">
+    <div class="history-header">
+      <h2 id="historyTitle" class="tutorial-title">📚 Historial</h2>
+      <button type="button" id="historyClose" class="tutorial-skip">Cerrar ✕</button>
+    </div>
+    <p class="history-note">Se guarda solo en este dispositivo, no se sube a ningún servidor.</p>
+    <div id="historyList" class="history-list"></div>
+    <button type="button" id="historyClearAll" class="history-clear-all">Borrar todo el historial</button>
+  </div>
+</div>
+
 <div class="wrap">
   <header>
     <h1>Lector de Documentos</h1>
     <div class="header-right">
       <span class="tag" id="headerTag">Lab · Rx</span>
+      <button id="historyToggle" class="a11y-toggle" aria-label="Ver historial de análisis">📚 Historial</button>
       <button id="helpToggle" class="a11y-toggle" aria-label="Ver tutorial rápido">? Ayuda</button>
       <button id="a11yToggle" class="a11y-toggle" aria-expanded="false" aria-controls="a11yPanel" aria-label="Abrir opciones de accesibilidad">Aa ⚙</button>
     </div>
@@ -965,6 +1078,107 @@
 // La clave se arma en partes para evitar que el escaneo de secretos de GitHub la detecte y bloquee el commit.
 const GEMINI_API_KEY = ['AQ.Ab8RN6L-ra0qXGcCjc', '-r4U0XusAA7N8b7HTjH6dYLcNrdtN5og'].join('');
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+
+// --- Historial ---
+const HISTORY_KEY = 'analysis-history';
+const HISTORY_LIMIT = 30;
+const historyOverlay = document.getElementById('historyOverlay');
+const historyToggle = document.getElementById('historyToggle');
+const historyClose = document.getElementById('historyClose');
+const historyList = document.getElementById('historyList');
+const historyClearAll = document.getElementById('historyClearAll');
+
+const categoryIcons = { medico: '🩺', judicial: '⚖️', apuntes: '📝' };
+const categoryNames = { medico: 'Análisis médico', judicial: 'Documento legal', apuntes: 'Apuntes' };
+
+function loadHistory(){
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  } catch(e) { return []; }
+}
+
+function saveHistoryEntry(text){
+  let entries;
+  try { entries = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+  catch(e) { entries = []; }
+
+  entries.unshift({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    date: new Date().toISOString(),
+    category: currentCategory,
+    modeLabel: modeLabels[currentCategory][currentMode],
+    fileName: currentFile ? currentFile.name : 'documento',
+    text
+  });
+
+  entries = entries.slice(0, HISTORY_LIMIT);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(entries)); } catch(e) { /* almacenamiento lleno o no disponible */ }
+}
+
+function deleteHistoryEntry(id){
+  const entries = loadHistory().filter(e => e.id !== id);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(entries)); } catch(e) { /* no-op */ }
+  renderHistoryList();
+}
+
+function formatHistoryDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('es', { day: '2-digit', month: 'short' }) + ' · ' +
+         d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderHistoryList(){
+  const entries = loadHistory();
+  if (entries.length === 0) {
+    historyList.innerHTML = '<div class="history-empty">Todavía no tienes análisis guardados.</div>';
+    return;
+  }
+
+  historyList.innerHTML = entries.map(entry => `
+    <div class="history-entry" data-id="${entry.id}">
+      <button type="button" class="history-entry-head" data-toggle="${entry.id}">
+        <span class="history-entry-icon" aria-hidden="true">${categoryIcons[entry.category] || '📄'}</span>
+        <span class="history-entry-info">
+          <span class="history-entry-title">${escapeHtml(entry.modeLabel)} — ${escapeHtml(entry.fileName)}</span>
+          <span class="history-entry-meta">${categoryNames[entry.category] || ''} · ${formatHistoryDate(entry.date)}</span>
+        </span>
+      </button>
+      <button type="button" class="history-entry-delete" data-delete="${entry.id}" aria-label="Borrar este análisis">🗑</button>
+    </div>
+  `).join('');
+
+  historyList.querySelectorAll('[data-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.toggle;
+      const container = btn.closest('.history-entry');
+      const existingBody = container.querySelector('.history-entry-body');
+      if (existingBody) { existingBody.remove(); return; }
+      const entry = loadHistory().find(e => e.id === id);
+      if (!entry) return;
+      const body = document.createElement('div');
+      body.className = 'history-entry-body';
+      body.textContent = entry.text;
+      container.appendChild(body);
+    });
+  });
+
+  historyList.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteHistoryEntry(btn.dataset.delete);
+    });
+  });
+}
+
+historyToggle.addEventListener('click', () => {
+  renderHistoryList();
+  historyOverlay.removeAttribute('hidden');
+});
+historyClose.addEventListener('click', () => historyOverlay.setAttribute('hidden', ''));
+historyClearAll.addEventListener('click', () => {
+  try { localStorage.removeItem(HISTORY_KEY); } catch(e) { /* no-op */ }
+  renderHistoryList();
+});
 
 // --- Tutorial rápido ---
 const tutorialSlides = [
@@ -1456,6 +1670,7 @@ runBtn.addEventListener('click', async () => {
     if (!text) throw new Error('No se pudo generar una respuesta.');
 
     renderResult(text);
+    saveHistoryEntry(text);
   } catch (err) {
     resultHolder.innerHTML = `<div class="error-box">Ocurrió un problema al analizar el documento. ${err.message || ''} Intenta de nuevo.</div>`;
   } finally {
