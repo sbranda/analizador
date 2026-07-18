@@ -692,7 +692,7 @@
     <button class="mode-btn active" data-cat="medico" aria-pressed="true">
       <span class="mode-icon" aria-hidden="true">🩺</span>
       <span class="mode-title">Análisis médico</span>
-      <span class="mode-desc">Ej: análisis de sangre, laboratorio</span>
+      <span class="mode-desc">Ej: laboratorio, radiografía, tomografía</span>
     </button>
     <button class="mode-btn" data-cat="judicial" aria-pressed="false">
       <span class="mode-icon" aria-hidden="true">⚖️</span>
@@ -981,10 +981,10 @@ const modeContainers = { modesMedico, modesJudicial, modesApuntes };
 
 const modePrompts = {
   medico: {
-    resumen: `Da un resumen general y breve de este documento de análisis médico/laboratorio, en español sencillo, para una persona sin formación médica. Organiza el resumen en 3-5 puntos clave. No des diagnóstico, solo explica qué muestra el documento.`,
-    explica: `Explica en español sencillo qué mide cada prueba o valor incluido en este análisis de laboratorio, uno por uno, en 1-2 frases cada uno. Usa un formato de lista. No des diagnóstico.`,
-    fuera_rango: `Identifica ÚNICAMENTE los valores que están fuera del rango de referencia (altos o bajos) en este análisis. Para cada uno, indica: el nombre del valor, el resultado, el rango normal, y una explicación breve y sencilla de qué podría significar en general (sin diagnosticar). Marca cada valor fuera de rango empezando la línea con "⚑ ". Si todo está normal, dilo claramente.`,
-    preguntas: `Basándote en este análisis de laboratorio, genera una lista de 5-8 preguntas concretas y útiles que la persona podría llevar a su médico en la próxima consulta, en español, para entender mejor sus resultados y próximos pasos.`
+    resumen: `Da un resumen general y breve de este documento médico (puede ser un análisis de laboratorio o un informe de un estudio de imagen como radiografía, tomografía o resonancia), en español sencillo, para una persona sin formación médica. Organiza el resumen en 3-5 puntos clave. No des diagnóstico, solo explica qué muestra el documento.`,
+    explica: `Explica en español sencillo cada prueba, valor, o hallazgo mencionado en este documento (sea un análisis de laboratorio o un informe de imagen como radiografía, tomografía o resonancia), uno por uno, en 1-2 frases cada uno. Usa un formato de lista. No des diagnóstico.`,
+    fuera_rango: `Identifica ÚNICAMENTE los resultados anormales de este documento: si es un análisis de laboratorio, los valores fuera del rango de referencia (altos o bajos); si es un informe de imagen (radiografía, tomografía, resonancia), los hallazgos que el propio informe describe como anormales o dignos de seguimiento. Para cada uno, indica de qué se trata y una explicación breve y sencilla de qué podría significar en general (sin diagnosticar). Marca cada uno empezando la línea con "⚑ ". Si todo está normal, dilo claramente.`,
+    preguntas: `Basándote en este documento médico (análisis de laboratorio o informe de imagen), genera una lista de 5-8 preguntas concretas y útiles que la persona podría llevar a su médico en la próxima consulta, en español, para entender mejor sus resultados y próximos pasos.`
   },
   judicial: {
     resumen_folio: `Este documento es un folio o expediente judicial. Da un resumen general y breve en español sencillo, para alguien sin formación legal: de qué trata el caso, en qué materia (civil, penal, laboral, etc.) y en qué etapa procesal se encuentra actualmente. Organiza en 3-5 puntos clave. No des asesoría legal, solo explica qué muestra el documento.`,
@@ -1060,7 +1060,7 @@ async function detectCategory(){
   detectStatus.innerHTML = '<span class="spinner" aria-hidden="true"></span> Detectando tipo de documento…';
   detectStatus.classList.remove('found');
 
-  const classifyPrompt = 'Mira este documento y responde ÚNICAMENTE con una de estas tres palabras exactas, sin nada más: "medico" si es un análisis médico o de laboratorio; "judicial" si es un documento legal (demanda, sentencia, expediente, contrato, notificación); "apuntes" si son notas de clase, resúmenes de estudio o material educativo. Si no estás seguro, elige la opción más probable. Responde solo con la palabra, sin puntuación ni explicación.';
+  const classifyPrompt = 'Mira este documento y responde ÚNICAMENTE con una de estas tres palabras exactas, sin nada más: "medico" si es un análisis médico o de laboratorio, o un informe de estudio de imagen (radiografía, tomografía, resonancia, ecografía); "judicial" si es un documento legal (demanda, sentencia, expediente, contrato, notificación); "apuntes" si son notas de clase, resúmenes de estudio o material educativo. Si no estás seguro, elige la opción más probable. Responde solo con la palabra, sin puntuación ni explicación.';
 
   try {
     const response = await fetch(GEMINI_URL, {
