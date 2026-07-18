@@ -25,6 +25,7 @@
     --flag-soft:#F1DED8;
     --line:#DCD5C4;
     --accent:#FF6B4A;
+    --accent-text:#FFFFFF;
     --shadow:#1C3D37;
     --radius:18px;
     --font-display:'Source Serif 4',serif;
@@ -72,6 +73,7 @@
     --flag-soft:#3A1F1F;
     --line:#FFFFFF;
     --accent:#FFD400;
+    --accent-text:#000000;
     --shadow:#FFD400;
   }
   body.theme-contrast .mode-btn,
@@ -162,7 +164,7 @@
   .tag{
     font-family:var(--font-mono);
     font-size:0.7rem;
-    color:var(--paper);
+    color:var(--accent-text);
     letter-spacing:0.08em;
     text-transform:uppercase;
     background:var(--accent);
@@ -222,7 +224,7 @@
     background:var(--accent);
     border:1.5px solid var(--ink);
     border-radius:8px;
-    color:#fff;
+    color:var(--accent-text);
     font-family:var(--font-mono);
     font-size:0.75rem;
     font-weight:700;
@@ -269,7 +271,7 @@
     transform:translate(2px,2px);
     box-shadow:1px 1px 0 var(--shadow);
   }
-  .mode-btn.active .mode-title, .mode-btn.active .mode-desc{color:#fff;}
+  .mode-btn.active .mode-title, .mode-btn.active .mode-desc{color:var(--accent-text);}
   .mode-title{
     font-weight:700;
     font-size:0.94rem;
@@ -337,7 +339,7 @@
     font-size:0.72rem;
     text-transform:uppercase;
     letter-spacing:0.08em;
-    color:#fff;
+    color:var(--accent-text);
     font-weight:700;
   }
   .result-body{
@@ -414,7 +416,7 @@
     width:100%;
     background:var(--accent);
     border:2px solid var(--ink);
-    color:#fff;
+    color:var(--accent-text);
     border-radius:14px;
     padding:13px;
     font-family:var(--font-body);
@@ -505,7 +507,7 @@
   .a11y-btn[aria-pressed="true"]{
     background:var(--accent);
     border-color:var(--ink);
-    color:#fff;
+    color:var(--accent-text);
   }
 
   .switch{
@@ -531,6 +533,50 @@
   .switch[aria-checked="true"]::after{
     transform:translateX(18px);
     background:#fff;
+  }
+
+  .color-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  #accentPicker{
+    width:38px;
+    height:38px;
+    border:2px solid var(--ink);
+    border-radius:8px;
+    padding:0;
+    cursor:pointer;
+    background:none;
+  }
+  .swatch-group{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+  .swatch{
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    border:2px solid var(--ink);
+    cursor:pointer;
+    padding:0;
+  }
+  .swatch-reset{
+    background:var(--paper);
+    color:var(--ink);
+    font-size:0.9rem;
+    line-height:1;
+  }
+  .contrast-note{
+    font-size:0.74rem;
+    color:var(--ink-soft);
+    display:block;
+  }
+  .contrast-note.warn{
+    color:var(--flag);
+    font-weight:600;
   }
 </style>
 </head>
@@ -562,6 +608,21 @@
         <button type="button" class="a11y-btn" data-theme="sepia" aria-pressed="false">Sepia</button>
         <button type="button" class="a11y-btn" data-theme="contrast" aria-pressed="false">Alto contraste</button>
       </div>
+    </div>
+    <div class="a11y-row a11y-row-wrap">
+      <span class="a11y-label" id="colorLabel">Color de acento</span>
+      <div class="color-row">
+        <input type="color" id="accentPicker" aria-labelledby="colorLabel" value="#FF6B4A">
+        <div class="swatch-group" role="group" aria-label="Colores de acento sugeridos, ya probados por contraste">
+          <button type="button" class="swatch" data-color="#FF6B4A" style="background:#FF6B4A" aria-label="Coral"></button>
+          <button type="button" class="swatch" data-color="#2C6E8E" style="background:#2C6E8E" aria-label="Azul"></button>
+          <button type="button" class="swatch" data-color="#6B4EA0" style="background:#6B4EA0" aria-label="Morado"></button>
+          <button type="button" class="swatch" data-color="#3F7D45" style="background:#3F7D45" aria-label="Verde"></button>
+          <button type="button" class="swatch" data-color="#B0503B" style="background:#B0503B" aria-label="Terracota"></button>
+          <button type="button" id="resetAccent" class="swatch swatch-reset" aria-label="Restablecer color por defecto">↺</button>
+        </div>
+      </div>
+      <span id="contrastNote" class="contrast-note" aria-live="polite"></span>
     </div>
     <div class="a11y-row">
       <span class="a11y-label" id="dyslexiaLabel">Fuente de lectura fácil</span>
@@ -649,6 +710,72 @@ const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemi
 // --- Accesibilidad ---
 const a11yToggle = document.getElementById('a11yToggle');
 const a11yPanel = document.getElementById('a11yPanel');
+// Color de acento personalizado, con verificación de contraste WCAG
+const accentPicker = document.getElementById('accentPicker');
+const swatches = document.querySelectorAll('.swatch[data-color]');
+const resetAccent = document.getElementById('resetAccent');
+const contrastNote = document.getElementById('contrastNote');
+
+function hexToRgb(hex){
+  const n = parseInt(hex.replace('#',''), 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+function relLuminance({r, g, b}){
+  const [R, G, B] = [r, g, b].map(v => {
+    v /= 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+}
+function contrastRatio(hex1, hex2){
+  const L1 = relLuminance(hexToRgb(hex1));
+  const L2 = relLuminance(hexToRgb(hex2));
+  const [light, dark] = L1 > L2 ? [L1, L2] : [L2, L1];
+  return (light + 0.05) / (dark + 0.05);
+}
+
+function applyAccentColor(hex){
+  const whiteContrast = contrastRatio(hex, '#FFFFFF');
+  const blackContrast = contrastRatio(hex, '#000000');
+  const textColor = whiteContrast >= blackContrast ? '#FFFFFF' : '#000000';
+  const bestContrast = Math.max(whiteContrast, blackContrast);
+
+  document.body.style.setProperty('--accent', hex);
+  document.body.style.setProperty('--accent-text', textColor);
+  document.body.style.setProperty('--shadow', hex);
+
+  if (bestContrast < 4.5) {
+    contrastNote.textContent = `⚠ Este color tiene contraste bajo (${bestContrast.toFixed(1)}:1). Se recomienda al menos 4.5:1 para texto legible.`;
+    contrastNote.classList.add('warn');
+  } else {
+    contrastNote.textContent = `Contraste de texto: ${bestContrast.toFixed(1)}:1 — cumple el estándar de accesibilidad.`;
+    contrastNote.classList.remove('warn');
+  }
+  accentPicker.value = hex;
+}
+
+accentPicker.addEventListener('input', () => {
+  applyAccentColor(accentPicker.value);
+  safeSet('a11y-accent', accentPicker.value);
+});
+
+swatches.forEach(sw => {
+  sw.addEventListener('click', () => {
+    applyAccentColor(sw.dataset.color);
+    safeSet('a11y-accent', sw.dataset.color);
+  });
+});
+
+resetAccent.addEventListener('click', () => {
+  document.body.style.removeProperty('--accent');
+  document.body.style.removeProperty('--accent-text');
+  document.body.style.removeProperty('--shadow');
+  contrastNote.textContent = 'Usando el color por defecto del tema.';
+  contrastNote.classList.remove('warn');
+  accentPicker.value = '#FF6B4A';
+  safeSet('a11y-accent', '');
+});
+
 const themeButtons = document.querySelectorAll('.a11y-btn[data-theme]');
 const dyslexiaSwitch = document.getElementById('dyslexiaSwitch');
 const scaleButtons = document.querySelectorAll('.a11y-btn[data-scale]');
@@ -708,6 +835,8 @@ dyslexiaSwitch.addEventListener('click', () => {
     document.body.classList.add('dyslexia-font');
     dyslexiaSwitch.setAttribute('aria-checked', 'true');
   }
+  const savedAccent = safeGet('a11y-accent');
+  if (savedAccent) applyAccentColor(savedAccent);
 })();
 
 if ('serviceWorker' in navigator) {
