@@ -340,6 +340,43 @@
     font-size:0.85rem;
     cursor:pointer;
   }
+
+  .compare-slots{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:14px;
+  }
+  .compare-slot-label{
+    display:block;
+    font-size:0.8rem;
+    font-weight:700;
+    margin-bottom:6px;
+    cursor:pointer;
+  }
+  .compare-slot-sub{
+    font-weight:400;
+    color:var(--ink-soft);
+    font-size:0.72rem;
+    display:block;
+  }
+  .compare-chip{
+    border:2px dashed var(--ink);
+    border-radius:10px;
+    padding:14px 8px;
+    text-align:center;
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    cursor:pointer;
+    background:var(--paper);
+  }
+  .compare-chip.has-file{
+    border-style:solid;
+    border-color:var(--teal);
+    color:var(--ink);
+    font-weight:600;
+  }
+  #compareResultHolder .result{margin-top:18px;}
   *{box-sizing:border-box;}
   button, input, select, textarea{
     font-family:inherit;
@@ -942,12 +979,45 @@
   </div>
 </div>
 
+<div id="compareOverlay" class="tutorial-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="compareTitle">
+  <div class="history-card">
+    <div class="history-header">
+      <h2 id="compareTitle" class="tutorial-title">🔀 Comparar</h2>
+      <button type="button" id="compareClose" class="tutorial-skip">Cerrar ✕</button>
+    </div>
+    <p class="history-note">Ej: dos análisis de sangre de meses distintos, para ver qué cambió.</p>
+
+    <div class="a11y-btn-group" id="compareCategoryGroup" role="group" aria-label="Tipo de documento a comparar">
+      <button type="button" class="a11y-btn" data-compare-cat="medico" aria-pressed="true">🩺 Médico</button>
+      <button type="button" class="a11y-btn" data-compare-cat="judicial" aria-pressed="false">⚖️ Legal</button>
+      <button type="button" class="a11y-btn" data-compare-cat="apuntes" aria-pressed="false">📝 Apuntes</button>
+    </div>
+
+    <div class="compare-slots">
+      <div class="compare-slot">
+        <label for="compareInput1" class="compare-slot-label">📄 Documento 1 <span class="compare-slot-sub">(más antiguo)</span></label>
+        <input type="file" id="compareInput1" accept=".pdf,.jpg,.jpeg,.png,.webp" class="visually-hidden">
+        <div id="compareChip1" class="compare-chip">Toca para subir</div>
+      </div>
+      <div class="compare-slot">
+        <label for="compareInput2" class="compare-slot-label">📄 Documento 2 <span class="compare-slot-sub">(más reciente)</span></label>
+        <input type="file" id="compareInput2" accept=".pdf,.jpg,.jpeg,.png,.webp" class="visually-hidden">
+        <div id="compareChip2" class="compare-chip">Toca para subir</div>
+      </div>
+    </div>
+
+    <button type="button" id="compareRunBtn" class="run-btn" disabled style="margin-top:14px;">Sube los dos documentos</button>
+    <div id="compareResultHolder" aria-live="polite"></div>
+  </div>
+</div>
+
 <div class="wrap">
   <header>
     <h1>Lector de Documentos</h1>
     <div class="header-right">
       <span class="tag" id="headerTag">Lab · Rx</span>
       <button id="historyToggle" class="a11y-toggle" aria-label="Ver historial de análisis">📚 Historial</button>
+      <button id="compareToggle" class="a11y-toggle" aria-label="Comparar dos documentos">🔀 Comparar</button>
       <button id="helpToggle" class="a11y-toggle" aria-label="Ver tutorial rápido">? Ayuda</button>
       <button id="a11yToggle" class="a11y-toggle" aria-expanded="false" aria-controls="a11yPanel" aria-label="Abrir opciones de accesibilidad">Aa ⚙</button>
     </div>
@@ -1120,6 +1190,131 @@
 // La clave se arma en partes para evitar que el escaneo de secretos de GitHub la detecte y bloquee el commit.
 const GEMINI_API_KEY = ['AQ.Ab8RN6L-ra0qXGcCjc', '-r4U0XusAA7N8b7HTjH6dYLcNrdtN5og'].join('');
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+
+// --- Comparar documentos ---
+const compareOverlay = document.getElementById('compareOverlay');
+const compareToggle = document.getElementById('compareToggle');
+const compareClose = document.getElementById('compareClose');
+const compareCategoryGroup = document.getElementById('compareCategoryGroup');
+const compareInput1 = document.getElementById('compareInput1');
+const compareInput2 = document.getElementById('compareInput2');
+const compareChip1 = document.getElementById('compareChip1');
+const compareChip2 = document.getElementById('compareChip2');
+const compareRunBtn = document.getElementById('compareRunBtn');
+const compareResultHolder = document.getElementById('compareResultHolder');
+
+let compareCategory = 'medico';
+let compareFile1 = null;
+let compareFile2 = null;
+
+const comparePrompts = {
+  medico: 'Estos son dos documentos médicos del mismo tipo, tomados en fechas distintas: el primer archivo es el más antiguo y el segundo es el más reciente. Compáralos y explica en español sencillo qué valores o hallazgos cambiaron entre uno y otro, si mejoraron, empeoraron o se mantuvieron igual. Organiza en una lista clara. Marca los cambios más importantes empezando la línea con "⚑ ". No des diagnóstico.',
+  judicial: 'Estos son dos documentos legales relacionados con el mismo caso, en fechas distintas: el primer archivo es el más antiguo y el segundo el más reciente. Compáralos y explica en español sencillo qué cambió: nuevas resoluciones, cambios de estado del caso, fechas nuevas, o cualquier diferencia relevante. Organiza en una lista. No des asesoría legal.',
+  apuntes: 'Estos son dos documentos de apuntes o estudio sobre un tema similar: el primer archivo es una versión anterior y el segundo una versión más reciente o ampliada. Compáralos y explica en español sencillo qué información es nueva en el segundo, qué se repite, y qué se corrigió o amplió. Organiza en una lista.'
+};
+
+function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result.split(',')[1];
+      const ext = file.name.split('.').pop().toLowerCase();
+      let mediaType = 'application/pdf';
+      if (['jpg','jpeg'].includes(ext)) mediaType = 'image/jpeg';
+      else if (ext === 'png') mediaType = 'image/png';
+      else if (ext === 'webp') mediaType = 'image/webp';
+      resolve({ base64, mediaType, name: file.name });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function updateCompareRunState(){
+  compareRunBtn.disabled = !(compareFile1 && compareFile2);
+  compareRunBtn.textContent = (compareFile1 && compareFile2) ? 'Comparar documentos' : 'Sube los dos documentos';
+}
+
+compareToggle.addEventListener('click', () => {
+  compareOverlay.removeAttribute('hidden');
+});
+compareClose.addEventListener('click', () => compareOverlay.setAttribute('hidden', ''));
+
+compareCategoryGroup.addEventListener('click', e => {
+  const btn = e.target.closest('.a11y-btn');
+  if (!btn) return;
+  compareCategoryGroup.querySelectorAll('.a11y-btn').forEach(b => b.setAttribute('aria-pressed', 'false'));
+  btn.setAttribute('aria-pressed', 'true');
+  compareCategory = btn.dataset.compareCat;
+});
+
+compareInput1.addEventListener('change', async e => {
+  if (!e.target.files.length) return;
+  compareFile1 = await fileToBase64(e.target.files[0]);
+  compareChip1.textContent = '✓ ' + compareFile1.name;
+  compareChip1.classList.add('has-file');
+  updateCompareRunState();
+});
+compareInput2.addEventListener('change', async e => {
+  if (!e.target.files.length) return;
+  compareFile2 = await fileToBase64(e.target.files[0]);
+  compareChip2.textContent = '✓ ' + compareFile2.name;
+  compareChip2.classList.add('has-file');
+  updateCompareRunState();
+});
+
+compareRunBtn.addEventListener('click', async () => {
+  if (!compareFile1 || !compareFile2) return;
+  compareRunBtn.disabled = true;
+  const originalText = compareRunBtn.textContent;
+  compareRunBtn.textContent = 'Comparando…';
+  compareResultHolder.innerHTML = `
+    <div class="result">
+      <div class="loading">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <span>Comparando documentos…</span>
+      </div>
+    </div>`;
+
+  try {
+    const response = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { inlineData: { mimeType: compareFile1.mediaType, data: compareFile1.base64 } },
+            { inlineData: { mimeType: compareFile2.mediaType, data: compareFile2.base64 } },
+            { text: comparePrompts[compareCategory] }
+          ]
+        }]
+      })
+    });
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`Error de la API (${response.status}): ${errBody.slice(0, 200)}`);
+    }
+    const data = await response.json();
+    const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('\n').trim();
+    if (!text) throw new Error('No se pudo generar una comparación.');
+
+    compareResultHolder.innerHTML = `
+      <div class="result">
+        <div class="result-head"><span>Comparación</span></div>
+        <div class="result-body">
+          <div class="margin-rule"></div>
+          <div class="result-text">${renderResultText(text)}</div>
+        </div>
+      </div>
+      <div class="disclaimer">${disclaimers[compareCategory]}</div>
+    `;
+  } catch (err) {
+    compareResultHolder.innerHTML = `<div class="error-box">Ocurrió un problema al comparar. ${err.message || ''} Intenta de nuevo.</div>`;
+  } finally {
+    compareRunBtn.disabled = false;
+    compareRunBtn.textContent = originalText;
+  }
+});
 
 // --- Historial ---
 const HISTORY_KEY = 'analysis-history';
