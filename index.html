@@ -803,12 +803,12 @@
     border:0;
   }
 
-  .header-right{
+  .toolbar{
     display:flex;
     align-items:center;
-    gap:6px;
+    gap:8px;
     flex-wrap:wrap;
-    justify-content:flex-end;
+    margin-bottom:20px;
   }
   .a11y-toggle{
     background:var(--paper);
@@ -1014,14 +1014,15 @@
 <div class="wrap">
   <header>
     <h1>Lector de Documentos</h1>
-    <div class="header-right">
-      <span class="tag" id="headerTag">Lab · Rx</span>
-      <button id="historyToggle" class="a11y-toggle" aria-label="Ver historial de análisis">📚 Historial</button>
-      <button id="compareToggle" class="a11y-toggle" aria-label="Comparar dos documentos">🔀 Comparar</button>
-      <button id="helpToggle" class="a11y-toggle" aria-label="Ver tutorial rápido">? Ayuda</button>
-      <button id="a11yToggle" class="a11y-toggle" aria-expanded="false" aria-controls="a11yPanel" aria-label="Abrir opciones de accesibilidad">Aa ⚙</button>
-    </div>
+    <span class="tag" id="headerTag">Lab · Rx</span>
   </header>
+
+  <div class="toolbar">
+    <button id="historyToggle" class="a11y-toggle" aria-label="Ver historial de análisis">📚 Historial</button>
+    <button id="compareToggle" class="a11y-toggle" aria-label="Comparar dos documentos">🔀 Comparar</button>
+    <button id="helpToggle" class="a11y-toggle" aria-label="Ver tutorial rápido">? Ayuda</button>
+    <button id="a11yToggle" class="a11y-toggle" aria-expanded="false" aria-controls="a11yPanel" aria-label="Abrir opciones de accesibilidad">Aa ⚙</button>
+  </div>
 
   <div id="a11yPanel" class="a11y-panel" hidden>
     <div class="a11y-row">
