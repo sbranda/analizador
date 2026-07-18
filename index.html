@@ -1815,7 +1815,10 @@ async function detectCategory(){
         }]
       })
     });
-    if (!response.ok) throw new Error('detect failed');
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`(${response.status}) ${errBody.slice(0, 150)}`);
+    }
     const data = await response.json();
     const raw = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim().toLowerCase();
     const detected = ['medico', 'judicial', 'apuntes'].find(cat => raw.includes(cat));
@@ -1829,7 +1832,8 @@ async function detectCategory(){
       detectStatus.textContent = 'No pudimos detectar el tipo automáticamente — elige uno arriba.';
     }
   } catch (err) {
-    detectStatus.textContent = 'No pudimos detectar el tipo automáticamente — elige uno arriba.';
+    console.error('Error de detección automática:', err);
+    detectStatus.textContent = `No pudimos detectar el tipo automáticamente (${err.message || 'error desconocido'}) — elige uno arriba.`;
   }
 }
 
