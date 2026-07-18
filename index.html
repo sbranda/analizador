@@ -656,6 +656,10 @@
       <span class="mode-title">Folio judicial</span>
       <span class="mode-desc">Expedientes, resoluciones, causas</span>
     </button>
+    <button class="mode-btn" data-cat="apuntes" aria-pressed="false">
+      <span class="mode-title">Apuntes</span>
+      <span class="mode-desc">Notas de clase, lecturas, estudio</span>
+    </button>
   </div>
 
   <div class="section-label" id="needLabelMedico">¿Qué necesitas?</div>
@@ -694,6 +698,25 @@
     <button class="mode-btn" data-mode="proximos_pasos" aria-pressed="false">
       <span class="mode-title">Próximos pasos</span>
       <span class="mode-desc">Qué sigue y qué acción se espera de ti</span>
+    </button>
+  </div>
+
+  <div class="modes" id="modesApuntes" role="group" aria-label="¿Qué necesitas? (apuntes)" style="display:none;">
+    <button class="mode-btn active" data-mode="resumen_apuntes" aria-pressed="true">
+      <span class="mode-title">Resumen de apuntes</span>
+      <span class="mode-desc">Las ideas principales, en breve</span>
+    </button>
+    <button class="mode-btn" data-mode="puntos_clave" aria-pressed="false">
+      <span class="mode-title">Puntos clave</span>
+      <span class="mode-desc">Lista de conceptos y términos importantes</span>
+    </button>
+    <button class="mode-btn" data-mode="preguntas_repaso" aria-pressed="false">
+      <span class="mode-title">Preguntas de repaso</span>
+      <span class="mode-desc">Para autoevaluarte antes de un examen</span>
+    </button>
+    <button class="mode-btn" data-mode="explica_dificil" aria-pressed="false">
+      <span class="mode-title">Explica lo difícil</span>
+      <span class="mode-desc">Simplifica los conceptos más complicados</span>
     </button>
   </div>
 
@@ -874,11 +897,19 @@ const resultHolder = document.getElementById('resultHolder');
 const categoryToggle = document.getElementById('categoryToggle');
 const modesMedico = document.getElementById('modesMedico');
 const modesJudicial = document.getElementById('modesJudicial');
+const modesApuntes = document.getElementById('modesApuntes');
 const headerTag = document.getElementById('headerTag');
 
 let currentFile = null; // {base64, mediaType, name}
 let currentCategory = 'medico';
 let currentMode = 'resumen';
+
+const categoryConfig = {
+  medico: { container: 'modesMedico', defaultMode: 'resumen', tag: 'Lab · Rx' },
+  judicial: { container: 'modesJudicial', defaultMode: 'resumen_folio', tag: 'Legal · Folio' },
+  apuntes: { container: 'modesApuntes', defaultMode: 'resumen_apuntes', tag: 'Notas · Estudio' }
+};
+const modeContainers = { modesMedico, modesJudicial, modesApuntes };
 
 const modePrompts = {
   medico: {
@@ -892,6 +923,12 @@ const modePrompts = {
     partes_roles: `Identifica a todas las partes y personas mencionadas en este folio judicial: demandante, demandado, jueza/juez, fiscal, abogados, testigos, u otros roles relevantes. Para cada una, indica su nombre y su rol en el caso, en formato de lista, en español sencillo.`,
     fechas_plazos: `Extrae ÚNICAMENTE las fechas y plazos importantes mencionados en este folio judicial: audiencias, notificaciones, vencimientos de plazos para responder o apelar, y cualquier fecha límite. Para cada una indica la fecha, qué evento es, y por qué importa. Marca los plazos que estén próximos a vencer o sean urgentes empezando la línea con "⚑ ". Usa formato de lista.`,
     proximos_pasos: `Basándote en el estado actual de este folio judicial, genera una lista de 4-7 próximos pasos concretos: qué acciones se esperan de la persona, qué documentos podría necesitar preparar, y qué preguntas debería hacerle a su abogado. En español sencillo. No es asesoría legal, son sugerencias generales de organización.`
+  },
+  apuntes: {
+    resumen_apuntes: `Estos son apuntes de clase o de estudio. Da un resumen general y breve en español sencillo con las ideas principales, organizado en 3-6 puntos clave, siguiendo el orden lógico del tema.`,
+    puntos_clave: `Extrae los conceptos, términos y definiciones más importantes de estos apuntes. Preséntalos como una lista, con el término y una definición breve de 1-2 frases para cada uno, en español sencillo.`,
+    preguntas_repaso: `Basándote en estos apuntes, genera de 6 a 10 preguntas de repaso tipo examen, en español, que ayuden a la persona a autoevaluarse antes de una prueba. Varía el tipo de pregunta (definición, comparación, aplicación). No incluyas las respuestas, solo las preguntas.`,
+    explica_dificil: `Identifica los 3-5 conceptos más complejos o densos de estos apuntes y explícalos de forma simple, con una analogía o ejemplo cotidiano para cada uno, en español sencillo.`
   }
 };
 
@@ -907,12 +944,19 @@ const modeLabels = {
     partes_roles: 'Partes involucradas',
     fechas_plazos: 'Fechas y plazos',
     proximos_pasos: 'Próximos pasos'
+  },
+  apuntes: {
+    resumen_apuntes: 'Resumen de apuntes',
+    puntos_clave: 'Puntos clave',
+    preguntas_repaso: 'Preguntas de repaso',
+    explica_dificil: 'Explica lo difícil'
   }
 };
 
 const disclaimers = {
   medico: 'Esto no es un diagnóstico médico. Para interpretar tus resultados con certeza y decidir próximos pasos, consulta siempre con tu médico.',
-  judicial: 'Esto no es asesoría legal. Para decisiones sobre tu caso, consulta siempre con tu abogado o representante legal.'
+  judicial: 'Esto no es asesoría legal. Para decisiones sobre tu caso, consulta siempre con tu abogado o representante legal.',
+  apuntes: 'Revisa siempre este resumen contra tus apuntes originales y el material del curso antes de un examen — puede omitir detalles importantes.'
 };
 
 categoryToggle.addEventListener('click', e => {
@@ -923,19 +967,14 @@ categoryToggle.addEventListener('click', e => {
   btn.setAttribute('aria-pressed', 'true');
   currentCategory = btn.dataset.cat;
 
-  if (currentCategory === 'medico') {
-    modesMedico.style.display = 'grid';
-    modesJudicial.style.display = 'none';
-    currentMode = 'resumen';
-    headerTag.textContent = 'Lab · Rx';
-  } else {
-    modesMedico.style.display = 'none';
-    modesJudicial.style.display = 'grid';
-    currentMode = 'resumen_folio';
-    headerTag.textContent = 'Legal · Folio';
-  }
+  const config = categoryConfig[currentCategory];
+  Object.values(modeContainers).forEach(el => { el.style.display = 'none'; });
+  modeContainers[config.container].style.display = 'grid';
+  currentMode = config.defaultMode;
+  headerTag.textContent = config.tag;
+
   document.querySelectorAll('.modes .mode-btn[data-mode]').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
-  const firstModeBtn = document.querySelector(`#modes${currentCategory === 'medico' ? 'Medico' : 'Judicial'} .mode-btn`);
+  const firstModeBtn = modeContainers[config.container].querySelector('.mode-btn');
   firstModeBtn.classList.add('active');
   firstModeBtn.setAttribute('aria-pressed', 'true');
   resultHolder.innerHTML = '';
@@ -996,7 +1035,7 @@ function renderChip(){
   });
 }
 
-[modesMedico, modesJudicial].forEach(container => {
+[modesMedico, modesJudicial, modesApuntes].forEach(container => {
   container.addEventListener('click', e => {
     const btn = e.target.closest('.mode-btn');
     if (!btn) return;
