@@ -1832,8 +1832,7 @@ async function detectCategory(){
       detectStatus.textContent = 'No pudimos detectar el tipo automáticamente — elige uno arriba.';
     }
   } catch (err) {
-    console.error('Error de detección automática:', err);
-    detectStatus.textContent = `No pudimos detectar el tipo automáticamente (${err.message || 'error desconocido'}) — elige uno arriba.`;
+    detectStatus.textContent = 'No pudimos detectar el tipo automáticamente — elige uno arriba.';
   }
 }
 
