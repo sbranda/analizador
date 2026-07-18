@@ -498,6 +498,19 @@
     color:var(--accent-text);
     font-weight:700;
   }
+  .speak-btn{
+    background:var(--card);
+    border:1.5px solid var(--ink);
+    border-radius:8px;
+    padding:5px 10px;
+    font-family:var(--font-body);
+    font-size:0.76rem;
+    font-weight:700;
+    color:var(--ink);
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .speak-btn:hover{border-color:var(--teal-deep);}
   .result-body{
     display:flex;
   }
@@ -1257,6 +1270,7 @@ function selectCategory(cat){
   firstModeBtn.classList.add('active');
   firstModeBtn.setAttribute('aria-pressed', 'true');
   resultHolder.innerHTML = '';
+  stopSpeaking();
 }
 
 categoryToggle.addEventListener('click', e => {
@@ -1366,6 +1380,7 @@ function renderChip(){
     runBtn.disabled = true;
     runBtn.textContent = 'Sube un archivo primero';
     resultHolder.innerHTML = '';
+    stopSpeaking();
     document.getElementById('detectStatus').textContent = '';
   });
 }
@@ -1383,6 +1398,7 @@ function renderChip(){
 
 runBtn.addEventListener('click', async () => {
   if (!currentFile) return;
+  stopSpeaking();
   runBtn.disabled = true;
   const originalText = runBtn.textContent;
   runBtn.textContent = 'Analizando…';
@@ -1433,6 +1449,55 @@ function escapeHtml(str){
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// --- Leer en voz alta ---
+let currentUtterance = null;
+
+function pickSpanishVoice(){
+  const voices = speechSynthesis.getVoices();
+  return voices.find(v => v.lang === 'es-ES') ||
+         voices.find(v => v.lang && v.lang.startsWith('es')) ||
+         null;
+}
+
+function setupSpeakButton(text){
+  const speakBtn = document.getElementById('speakBtn');
+  if (!speakBtn || !('speechSynthesis' in window)) {
+    if (speakBtn) speakBtn.style.display = 'none';
+    return;
+  }
+
+  speakBtn.addEventListener('click', () => {
+    if (speechSynthesis.speaking && !speechSynthesis.paused) {
+      speechSynthesis.pause();
+      speakBtn.textContent = '▶ Continuar';
+      return;
+    }
+    if (speechSynthesis.paused) {
+      speechSynthesis.resume();
+      speakBtn.textContent = '⏸ Pausar';
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voice = pickSpanishVoice();
+    if (voice) utterance.voice = voice;
+    utterance.lang = voice ? voice.lang : 'es-ES';
+    utterance.rate = 0.95;
+
+    utterance.onend = () => { speakBtn.textContent = '🔊 Escuchar'; };
+    utterance.onerror = () => { speakBtn.textContent = '🔊 Escuchar'; };
+
+    currentUtterance = utterance;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utterance);
+    speakBtn.textContent = '⏸ Pausar';
+  });
+}
+
+function stopSpeaking(){
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+}
+
 function renderResult(text){
   const lines = text.split('\n').map(line => {
     let escaped = escapeHtml(line);
@@ -1445,7 +1510,10 @@ function renderResult(text){
 
   resultHolder.innerHTML = `
     <div class="result">
-      <div class="result-head"><span>${modeLabels[currentCategory][currentMode]}</span></div>
+      <div class="result-head">
+        <span>${modeLabels[currentCategory][currentMode]}</span>
+        <button type="button" id="speakBtn" class="speak-btn" aria-label="Escuchar el resultado en voz alta">🔊 Escuchar</button>
+      </div>
       <div class="result-body">
         <div class="margin-rule"></div>
         <div class="result-text">${lines}</div>
@@ -1453,6 +1521,8 @@ function renderResult(text){
     </div>
     <div class="disclaimer">${disclaimers[currentCategory]}</div>
   `;
+
+  setupSpeakButton(text);
 }
 </script>
 </body>
