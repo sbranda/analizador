@@ -1035,6 +1035,7 @@
     <div class="a11y-row a11y-row-wrap">
       <span class="a11y-label" id="themeLabel">Tema de color</span>
       <div class="a11y-btn-group" role="group" aria-labelledby="themeLabel">
+        <button type="button" class="a11y-btn" data-theme="auto" aria-pressed="false">🌓 Automático</button>
         <button type="button" class="a11y-btn" data-theme="light" aria-pressed="true">Claro</button>
         <button type="button" class="a11y-btn" data-theme="dark" aria-pressed="false">Oscuro</button>
         <button type="button" class="a11y-btn" data-theme="sepia" aria-pressed="false">Sepia</button>
@@ -1578,10 +1579,32 @@ scaleButtons.forEach(btn => {
   });
 });
 
-function applyTheme(theme){
+let currentThemeSetting = 'light';
+const darkModeQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+function getAutoTheme(){
+  if (darkModeQuery) return darkModeQuery.matches ? 'dark' : 'light';
+  // Alternativa si el navegador no soporta detectar el modo del sistema: usar la hora
+  const hour = new Date().getHours();
+  return (hour >= 19 || hour < 7) ? 'dark' : 'light';
+}
+
+function applyVisualTheme(resolvedTheme){
   document.body.classList.remove('theme-dark', 'theme-sepia', 'theme-contrast');
-  if (theme !== 'light') document.body.classList.add('theme-' + theme);
+  if (resolvedTheme !== 'light') document.body.classList.add('theme-' + resolvedTheme);
+}
+
+function applyTheme(theme){
+  currentThemeSetting = theme;
+  const resolved = theme === 'auto' ? getAutoTheme() : theme;
+  applyVisualTheme(resolved);
   themeButtons.forEach(b => b.setAttribute('aria-pressed', b.dataset.theme === theme ? 'true' : 'false'));
+}
+
+if (darkModeQuery) {
+  darkModeQuery.addEventListener('change', () => {
+    if (currentThemeSetting === 'auto') applyVisualTheme(getAutoTheme());
+  });
 }
 
 themeButtons.forEach(btn => {
