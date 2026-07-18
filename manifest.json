@@ -1,7 +1,7 @@
 {
-  "name": "Lector de Resultados",
-  "short_name": "Resultados",
-  "description": "Analiza y resume tus documentos de análisis médicos y de laboratorio.",
+  "name": "Resumelo",
+  "short_name": "Resumelo",
+  "description": "Analiza y resume tus documentos: análisis médicos, legales y apuntes de estudio.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
