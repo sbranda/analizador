@@ -1,11 +1,11 @@
 {
-  "name": "Resumelo",
-  "short_name": "Resumelo",
+  "name": "Te lo Explico",
+  "short_name": "Te lo Explico",
   "description": "Analiza y resume tus documentos: análisis médicos, legales y apuntes de estudio.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#F6F3EC",
+  "background_color": "#6FCB9F",
   "theme_color": "#1C3D37",
   "orientation": "portrait",
   "icons": [
