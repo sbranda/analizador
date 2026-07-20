@@ -1159,8 +1159,10 @@
     <span class="step-dot" data-step-dot="2">2</span>
     <span class="step-line"></span>
     <span class="step-dot" data-step-dot="3">3</span>
+    <span class="step-line"></span>
+    <span class="step-dot" data-step-dot="4">4</span>
   </div>
-  <p class="step-label" id="stepLabel">Paso 1 de 3 · Sube tu documento</p>
+  <p class="step-label" id="stepLabel">Paso 1 de 4 · Sube tu documento</p>
 
   <!-- PASO 1: subir documento -->
   <section id="step1">
@@ -1181,7 +1183,7 @@
     <button class="run-btn" id="step1NextBtn" disabled>Sube un archivo primero</button>
   </section>
 
-  <!-- PASO 2: nivel y modo -->
+  <!-- PASO 2: tipo de documento -->
   <section id="step2" hidden>
     <button type="button" class="step-back" id="step2BackBtn">← Atrás</button>
 
@@ -1203,6 +1205,13 @@
         <span class="mode-desc">Ej: notas de clase, resúmenes</span>
       </button>
     </div>
+
+    <button class="run-btn" id="step2NextBtn">Continuar →</button>
+  </section>
+
+  <!-- PASO 3: nivel y modo -->
+  <section id="step3" hidden>
+    <button type="button" class="step-back" id="step3BackBtn">← Atrás</button>
 
     <div class="section-label" id="levelLabel">Nivel de explicación</div>
     <div class="modes level-toggle" id="levelToggle" role="group" aria-labelledby="levelLabel">
@@ -1285,9 +1294,9 @@
     <button class="run-btn" id="runBtn" disabled>Sube un archivo primero</button>
   </section>
 
-  <!-- PASO 3: resultado -->
-  <section id="step3" hidden>
-    <button type="button" class="step-back" id="step3BackBtn">← Cambiar nivel/modo</button>
+  <!-- PASO 4: resultado -->
+  <section id="step4" hidden>
+    <button type="button" class="step-back" id="step4BackBtn">← Cambiar nivel/modo</button>
     <div id="resultHolder" aria-live="polite"></div>
     <button type="button" class="run-btn" id="newAnalysisBtn" style="margin-top:16px;">🔄 Analizar otro documento</button>
   </section>
@@ -1793,21 +1802,25 @@ const headerTag = document.getElementById('headerTag');
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const step3 = document.getElementById('step3');
+const step4 = document.getElementById('step4');
 const step1NextBtn = document.getElementById('step1NextBtn');
 const step2BackBtn = document.getElementById('step2BackBtn');
+const step2NextBtn = document.getElementById('step2NextBtn');
 const step3BackBtn = document.getElementById('step3BackBtn');
+const step4BackBtn = document.getElementById('step4BackBtn');
 const newAnalysisBtn = document.getElementById('newAnalysisBtn');
 const stepLabel = document.getElementById('stepLabel');
 const stepDots = document.querySelectorAll('[data-step-dot]');
 
 const stepLabels = {
-  1: 'Paso 1 de 3 · Sube tu documento',
-  2: 'Paso 2 de 3 · Elige nivel y modo',
-  3: 'Paso 3 de 3 · Resultado'
+  1: 'Paso 1 de 4 · Sube tu documento',
+  2: 'Paso 2 de 4 · Tipo de documento',
+  3: 'Paso 3 de 4 · Nivel y modo',
+  4: 'Paso 4 de 4 · Resultado'
 };
 
 function goToStep(n){
-  [step1, step2, step3].forEach((el, i) => {
+  [step1, step2, step3, step4].forEach((el, i) => {
     if (i + 1 === n) el.removeAttribute('hidden');
     else el.setAttribute('hidden', '');
   });
@@ -1826,7 +1839,9 @@ step1NextBtn.addEventListener('click', () => {
   goToStep(2);
 });
 step2BackBtn.addEventListener('click', () => goToStep(1));
+step2NextBtn.addEventListener('click', () => goToStep(3));
 step3BackBtn.addEventListener('click', () => goToStep(2));
+step4BackBtn.addEventListener('click', () => goToStep(3));
 newAnalysisBtn.addEventListener('click', () => {
   currentFile = null;
   fileChipHolder.innerHTML = '';
@@ -2084,7 +2099,7 @@ runBtn.addEventListener('click', async () => {
         <span>Leyendo el documento…</span>
       </div>
     </div>`;
-  goToStep(3);
+  goToStep(4);
 
   try {
     const fullPrompt = `${modePrompts[currentCategory][currentMode]}\n\n${levelInstructions[currentLevel]}`;
