@@ -1,6 +1,6 @@
 {
-  "name": "Te lo Explico",
-  "short_name": "Te lo Explico",
+  "name": "Clarito",
+  "short_name": "Clarito",
   "description": "Analiza y resume tus documentos: análisis médicos, legales y apuntes de estudio.",
   "start_url": "./index.html",
   "scope": "./",
