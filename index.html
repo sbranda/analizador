@@ -822,6 +822,74 @@
     padding-top:16px;
     border-top:1px solid var(--line);
   }
+
+  .step-indicator{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    margin-bottom:6px;
+  }
+  .step-dot{
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    background:var(--card);
+    border:2px solid var(--ink);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    font-size:0.82rem;
+    color:var(--ink-soft);
+  }
+  .step-dot.active{
+    background:var(--accent);
+    color:var(--accent-text);
+    border-color:var(--ink);
+  }
+  .step-dot.done{
+    background:var(--teal-deep);
+    color:var(--paper);
+    border-color:var(--ink);
+  }
+  .step-line{
+    width:28px;
+    height:2px;
+    background:var(--line);
+  }
+  .step-label{
+    text-align:center;
+    font-family:var(--font-mono);
+    font-size:0.76rem;
+    font-weight:700;
+    letter-spacing:0.04em;
+    color:var(--ink);
+    margin:0 0 22px;
+  }
+  .step-back{
+    display:inline-block;
+    background:none;
+    border:none;
+    color:var(--ink-soft);
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:0.85rem;
+    cursor:pointer;
+    padding:0;
+    margin-bottom:16px;
+  }
+  .step-back:hover{color:var(--ink);}
+  #step1, #step2, #step3{
+    animation:step-fade-in .2s ease;
+  }
+  @keyframes step-fade-in{
+    from{ opacity:0; transform:translateY(6px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    #step1, #step2, #step3{ animation:none; }
+  }
   .a11y-toggle{
     background:var(--paper);
     border:2px solid var(--ink);
@@ -1085,120 +1153,144 @@
 
   <button id="installBtn" class="install-btn" style="display:none;">⬇ Instalar app</button>
 
-  <div id="uploadZone" class="upload-zone" role="button" tabindex="0" aria-label="Subir documento, PDF o foto">
-    <label for="fileInput" class="visually-hidden">Subir documento (PDF o foto)</label>
-    <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.webp">
-    <span class="upload-icon" aria-hidden="true">⌁</span>
-    <div class="upload-label">Sube tu documento (PDF o foto)</div>
-    <div class="upload-hint">Toca aquí o arrastra el archivo</div>
+  <div class="step-indicator" id="stepIndicator" aria-hidden="true">
+    <span class="step-dot active" data-step-dot="1">1</span>
+    <span class="step-line"></span>
+    <span class="step-dot" data-step-dot="2">2</span>
+    <span class="step-line"></span>
+    <span class="step-dot" data-step-dot="3">3</span>
   </div>
+  <p class="step-label" id="stepLabel">Paso 1 de 3 · Sube tu documento</p>
 
-  <label for="cameraInput" class="camera-btn">📷 Tomar foto ahora</label>
-  <input type="file" id="cameraInput" accept="image/*" capture="environment" class="visually-hidden">
+  <!-- PASO 1: subir documento -->
+  <section id="step1">
+    <div id="uploadZone" class="upload-zone" role="button" tabindex="0" aria-label="Subir documento, PDF o foto">
+      <label for="fileInput" class="visually-hidden">Subir documento (PDF o foto)</label>
+      <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.webp">
+      <span class="upload-icon" aria-hidden="true">⌁</span>
+      <div class="upload-label">Sube tu documento (PDF o foto)</div>
+      <div class="upload-hint">Toca aquí o arrastra el archivo</div>
+    </div>
 
-  <div id="fileChipHolder" aria-live="polite"></div>
-  <div id="detectStatus" class="detect-status" aria-live="polite"></div>
+    <label for="cameraInput" class="camera-btn">📷 Tomar foto ahora</label>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="visually-hidden">
 
-  <div class="section-label" id="categoryLabel">Tipo de documento</div>
-  <div class="modes" id="categoryToggle" role="group" aria-labelledby="categoryLabel">
-    <button class="mode-btn active" data-cat="medico" aria-pressed="true">
-      <span class="mode-icon" aria-hidden="true">🩺</span>
-      <span class="mode-title">Análisis médico</span>
-      <span class="mode-desc">Ej: laboratorio, radiografía, tensiómetro</span>
-    </button>
-    <button class="mode-btn" data-cat="judicial" aria-pressed="false">
-      <span class="mode-icon" aria-hidden="true">⚖️</span>
-      <span class="mode-title">Documento legal</span>
-      <span class="mode-desc">Ej: demanda, sentencia, expediente</span>
-    </button>
-    <button class="mode-btn" data-cat="apuntes" aria-pressed="false">
-      <span class="mode-icon" aria-hidden="true">📝</span>
-      <span class="mode-title">Apuntes</span>
-      <span class="mode-desc">Ej: notas de clase, resúmenes</span>
-    </button>
-  </div>
+    <div id="fileChipHolder" aria-live="polite"></div>
+    <div id="detectStatus" class="detect-status" aria-live="polite"></div>
 
-  <div class="section-label" id="levelLabel">Nivel de explicación</div>
-  <div class="modes level-toggle" id="levelToggle" role="group" aria-labelledby="levelLabel">
-    <button class="mode-btn active" data-level="sencilla" aria-pressed="true">
-      <span class="mode-title">Sencilla</span>
-      <span class="mode-desc">Palabras simples, oraciones cortas</span>
-    </button>
-    <button class="mode-btn" data-level="media" aria-pressed="false">
-      <span class="mode-title">Media</span>
-      <span class="mode-desc">Lenguaje claro, algo de detalle</span>
-    </button>
-    <button class="mode-btn" data-level="avanzada" aria-pressed="false">
-      <span class="mode-title">Avanzada</span>
-      <span class="mode-desc">Con términos técnicos y detalle</span>
-    </button>
-  </div>
+    <button class="run-btn" id="step1NextBtn" disabled>Sube un archivo primero</button>
+  </section>
 
-  <div class="section-label" id="needLabelMedico">¿Qué necesitas?</div>
-  <div class="modes" id="modesMedico" role="group" aria-labelledby="needLabelMedico">
-    <button class="mode-btn active" data-mode="resumen" aria-pressed="true">
-      <span class="mode-title">Resumen general</span>
-      <span class="mode-desc">Panorama claro y breve de todo el documento</span>
-    </button>
-    <button class="mode-btn" data-mode="explica" aria-pressed="false">
-      <span class="mode-title">Explica cada valor</span>
-      <span class="mode-desc">Qué mide cada prueba, en lenguaje simple</span>
-    </button>
-    <button class="mode-btn" data-mode="fuera_rango" aria-pressed="false">
-      <span class="mode-title">Fuera de rango</span>
-      <span class="mode-desc">Solo lo que está alto, bajo o anormal</span>
-    </button>
-    <button class="mode-btn" data-mode="preguntas" aria-pressed="false">
-      <span class="mode-title">Preguntas al médico</span>
-      <span class="mode-desc">Lista para llevar a tu próxima consulta</span>
-    </button>
-    <button class="mode-btn" data-mode="dispositivo" aria-pressed="false">
-      <span class="mode-title">Leer dispositivo</span>
-      <span class="mode-desc">Foto de tensiómetro, glucómetro, oxímetro</span>
-    </button>
-  </div>
+  <!-- PASO 2: nivel y modo -->
+  <section id="step2" hidden>
+    <button type="button" class="step-back" id="step2BackBtn">← Atrás</button>
 
-  <div class="modes" id="modesJudicial" role="group" aria-label="¿Qué necesitas? (folio judicial)" style="display:none;">
-    <button class="mode-btn active" data-mode="resumen_folio" aria-pressed="true">
-      <span class="mode-title">Resumen del folio</span>
-      <span class="mode-desc">Qué es el caso y en qué estado está, en breve</span>
-    </button>
-    <button class="mode-btn" data-mode="partes_roles" aria-pressed="false">
-      <span class="mode-title">Partes involucradas</span>
-      <span class="mode-desc">Quién es quién: demandante, demandado, jueza, etc.</span>
-    </button>
-    <button class="mode-btn" data-mode="fechas_plazos" aria-pressed="false">
-      <span class="mode-title">Fechas y plazos</span>
-      <span class="mode-desc">Fechas clave y plazos que no debes perder</span>
-    </button>
-    <button class="mode-btn" data-mode="proximos_pasos" aria-pressed="false">
-      <span class="mode-title">Próximos pasos</span>
-      <span class="mode-desc">Qué sigue y qué acción se espera de ti</span>
-    </button>
-  </div>
+    <div class="section-label" id="categoryLabel">Tipo de documento</div>
+    <div class="modes" id="categoryToggle" role="group" aria-labelledby="categoryLabel">
+      <button class="mode-btn active" data-cat="medico" aria-pressed="true">
+        <span class="mode-icon" aria-hidden="true">🩺</span>
+        <span class="mode-title">Análisis médico</span>
+        <span class="mode-desc">Ej: laboratorio, radiografía, tensiómetro</span>
+      </button>
+      <button class="mode-btn" data-cat="judicial" aria-pressed="false">
+        <span class="mode-icon" aria-hidden="true">⚖️</span>
+        <span class="mode-title">Documento legal</span>
+        <span class="mode-desc">Ej: demanda, sentencia, expediente</span>
+      </button>
+      <button class="mode-btn" data-cat="apuntes" aria-pressed="false">
+        <span class="mode-icon" aria-hidden="true">📝</span>
+        <span class="mode-title">Apuntes</span>
+        <span class="mode-desc">Ej: notas de clase, resúmenes</span>
+      </button>
+    </div>
 
-  <div class="modes" id="modesApuntes" role="group" aria-label="¿Qué necesitas? (apuntes)" style="display:none;">
-    <button class="mode-btn active" data-mode="resumen_apuntes" aria-pressed="true">
-      <span class="mode-title">Resumen de apuntes</span>
-      <span class="mode-desc">Las ideas principales, en breve</span>
-    </button>
-    <button class="mode-btn" data-mode="puntos_clave" aria-pressed="false">
-      <span class="mode-title">Puntos clave</span>
-      <span class="mode-desc">Lista de conceptos y términos importantes</span>
-    </button>
-    <button class="mode-btn" data-mode="preguntas_repaso" aria-pressed="false">
-      <span class="mode-title">Preguntas de repaso</span>
-      <span class="mode-desc">Para autoevaluarte antes de un examen</span>
-    </button>
-    <button class="mode-btn" data-mode="explica_dificil" aria-pressed="false">
-      <span class="mode-title">Explica lo difícil</span>
-      <span class="mode-desc">Simplifica los conceptos más complicados</span>
-    </button>
-  </div>
+    <div class="section-label" id="levelLabel">Nivel de explicación</div>
+    <div class="modes level-toggle" id="levelToggle" role="group" aria-labelledby="levelLabel">
+      <button class="mode-btn active" data-level="sencilla" aria-pressed="true">
+        <span class="mode-title">Sencilla</span>
+        <span class="mode-desc">Palabras simples, oraciones cortas</span>
+      </button>
+      <button class="mode-btn" data-level="media" aria-pressed="false">
+        <span class="mode-title">Media</span>
+        <span class="mode-desc">Lenguaje claro, algo de detalle</span>
+      </button>
+      <button class="mode-btn" data-level="avanzada" aria-pressed="false">
+        <span class="mode-title">Avanzada</span>
+        <span class="mode-desc">Con términos técnicos y detalle</span>
+      </button>
+    </div>
 
-  <button class="run-btn" id="runBtn" disabled>Sube un archivo primero</button>
+    <div class="section-label" id="needLabelMedico">¿Qué necesitas?</div>
+    <div class="modes" id="modesMedico" role="group" aria-labelledby="needLabelMedico">
+      <button class="mode-btn active" data-mode="resumen" aria-pressed="true">
+        <span class="mode-title">Resumen general</span>
+        <span class="mode-desc">Panorama claro y breve de todo el documento</span>
+      </button>
+      <button class="mode-btn" data-mode="explica" aria-pressed="false">
+        <span class="mode-title">Explica cada valor</span>
+        <span class="mode-desc">Qué mide cada prueba, en lenguaje simple</span>
+      </button>
+      <button class="mode-btn" data-mode="fuera_rango" aria-pressed="false">
+        <span class="mode-title">Fuera de rango</span>
+        <span class="mode-desc">Solo lo que está alto, bajo o anormal</span>
+      </button>
+      <button class="mode-btn" data-mode="preguntas" aria-pressed="false">
+        <span class="mode-title">Preguntas al médico</span>
+        <span class="mode-desc">Lista para llevar a tu próxima consulta</span>
+      </button>
+      <button class="mode-btn" data-mode="dispositivo" aria-pressed="false">
+        <span class="mode-title">Leer dispositivo</span>
+        <span class="mode-desc">Foto de tensiómetro, glucómetro, oxímetro</span>
+      </button>
+    </div>
 
-  <div id="resultHolder" aria-live="polite"></div>
+    <div class="modes" id="modesJudicial" role="group" aria-label="¿Qué necesitas? (folio judicial)" style="display:none;">
+      <button class="mode-btn active" data-mode="resumen_folio" aria-pressed="true">
+        <span class="mode-title">Resumen del folio</span>
+        <span class="mode-desc">Qué es el caso y en qué estado está, en breve</span>
+      </button>
+      <button class="mode-btn" data-mode="partes_roles" aria-pressed="false">
+        <span class="mode-title">Partes involucradas</span>
+        <span class="mode-desc">Quién es quién: demandante, demandado, jueza, etc.</span>
+      </button>
+      <button class="mode-btn" data-mode="fechas_plazos" aria-pressed="false">
+        <span class="mode-title">Fechas y plazos</span>
+        <span class="mode-desc">Fechas clave y plazos que no debes perder</span>
+      </button>
+      <button class="mode-btn" data-mode="proximos_pasos" aria-pressed="false">
+        <span class="mode-title">Próximos pasos</span>
+        <span class="mode-desc">Qué sigue y qué acción se espera de ti</span>
+      </button>
+    </div>
+
+    <div class="modes" id="modesApuntes" role="group" aria-label="¿Qué necesitas? (apuntes)" style="display:none;">
+      <button class="mode-btn active" data-mode="resumen_apuntes" aria-pressed="true">
+        <span class="mode-title">Resumen de apuntes</span>
+        <span class="mode-desc">Las ideas principales, en breve</span>
+      </button>
+      <button class="mode-btn" data-mode="puntos_clave" aria-pressed="false">
+        <span class="mode-title">Puntos clave</span>
+        <span class="mode-desc">Lista de conceptos y términos importantes</span>
+      </button>
+      <button class="mode-btn" data-mode="preguntas_repaso" aria-pressed="false">
+        <span class="mode-title">Preguntas de repaso</span>
+        <span class="mode-desc">Para autoevaluarte antes de un examen</span>
+      </button>
+      <button class="mode-btn" data-mode="explica_dificil" aria-pressed="false">
+        <span class="mode-title">Explica lo difícil</span>
+        <span class="mode-desc">Simplifica los conceptos más complicados</span>
+      </button>
+    </div>
+
+    <button class="run-btn" id="runBtn" disabled>Sube un archivo primero</button>
+  </section>
+
+  <!-- PASO 3: resultado -->
+  <section id="step3" hidden>
+    <button type="button" class="step-back" id="step3BackBtn">← Cambiar nivel/modo</button>
+    <div id="resultHolder" aria-live="polite"></div>
+    <button type="button" class="run-btn" id="newAnalysisBtn" style="margin-top:16px;">🔄 Analizar otro documento</button>
+  </section>
 
   <footer class="app-footer">desarrollado por @sebranda</footer>
 </main>
@@ -1697,6 +1789,58 @@ const modesJudicial = document.getElementById('modesJudicial');
 const modesApuntes = document.getElementById('modesApuntes');
 const headerTag = document.getElementById('headerTag');
 
+// --- Navegación por pasos ---
+const step1 = document.getElementById('step1');
+const step2 = document.getElementById('step2');
+const step3 = document.getElementById('step3');
+const step1NextBtn = document.getElementById('step1NextBtn');
+const step2BackBtn = document.getElementById('step2BackBtn');
+const step3BackBtn = document.getElementById('step3BackBtn');
+const newAnalysisBtn = document.getElementById('newAnalysisBtn');
+const stepLabel = document.getElementById('stepLabel');
+const stepDots = document.querySelectorAll('[data-step-dot]');
+
+const stepLabels = {
+  1: 'Paso 1 de 3 · Sube tu documento',
+  2: 'Paso 2 de 3 · Elige nivel y modo',
+  3: 'Paso 3 de 3 · Resultado'
+};
+
+function goToStep(n){
+  [step1, step2, step3].forEach((el, i) => {
+    if (i + 1 === n) el.removeAttribute('hidden');
+    else el.setAttribute('hidden', '');
+  });
+  stepLabel.textContent = stepLabels[n];
+  stepDots.forEach(dot => {
+    const dotNum = Number(dot.dataset.stepDot);
+    dot.classList.remove('active', 'done');
+    if (dotNum === n) dot.classList.add('active');
+    else if (dotNum < n) dot.classList.add('done');
+  });
+  document.getElementById('main').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+step1NextBtn.addEventListener('click', () => {
+  if (!currentFile) return;
+  goToStep(2);
+});
+step2BackBtn.addEventListener('click', () => goToStep(1));
+step3BackBtn.addEventListener('click', () => goToStep(2));
+newAnalysisBtn.addEventListener('click', () => {
+  currentFile = null;
+  fileChipHolder.innerHTML = '';
+  fileInput.value = '';
+  step1NextBtn.disabled = true;
+  step1NextBtn.textContent = 'Sube un archivo primero';
+  runBtn.disabled = true;
+  runBtn.textContent = 'Sube un archivo primero';
+  resultHolder.innerHTML = '';
+  stopSpeaking();
+  document.getElementById('detectStatus').textContent = '';
+  goToStep(1);
+});
+
 let currentFile = null; // {base64, mediaType, name}
 let currentCategory = 'medico';
 let currentMode = 'resumen';
@@ -1884,6 +2028,8 @@ function handleFile(file){
 
     currentFile = { base64, mediaType, name: file.name };
     renderChip();
+    step1NextBtn.disabled = false;
+    step1NextBtn.textContent = 'Continuar →';
     runBtn.disabled = false;
     runBtn.textContent = 'Analizar documento';
     detectCategory();
@@ -1904,6 +2050,8 @@ function renderChip(){
     currentFile = null;
     fileChipHolder.innerHTML = '';
     fileInput.value = '';
+    step1NextBtn.disabled = true;
+    step1NextBtn.textContent = 'Sube un archivo primero';
     runBtn.disabled = true;
     runBtn.textContent = 'Sube un archivo primero';
     resultHolder.innerHTML = '';
@@ -1936,6 +2084,7 @@ runBtn.addEventListener('click', async () => {
         <span>Leyendo el documento…</span>
       </div>
     </div>`;
+  goToStep(3);
 
   try {
     const fullPrompt = `${modePrompts[currentCategory][currentMode]}\n\n${levelInstructions[currentLevel]}`;
