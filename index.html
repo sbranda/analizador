@@ -2047,7 +2047,7 @@ async function detectCategory(){
     if (detected) {
       selectCategory(detected);
       const labels = { medico: 'Análisis médico', judicial: 'Documento legal', apuntes: 'Apuntes' };
-      detectStatus.textContent = `✓ Detectamos: ${labels[detected]} — cambia la opción arriba si no es correcto`;
+      detectStatus.textContent = `✓ Detectamos: ${labels[detected]} — lo puedes cambiar en el siguiente paso`;
       detectStatus.classList.add('found');
     } else {
       detectStatus.textContent = 'No pudimos detectar el tipo automáticamente — elige uno arriba.';
