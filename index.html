@@ -1187,6 +1187,8 @@
   <section id="step2" hidden>
     <button type="button" class="step-back" id="step2BackBtn">← Atrás</button>
 
+    <p id="categoryConfirm" class="detect-status found" aria-live="polite"></p>
+
     <div class="section-label" id="categoryLabel">Tipo de documento</div>
     <div class="modes" id="categoryToggle" role="group" aria-labelledby="categoryLabel">
       <button class="mode-btn active" data-cat="medico" aria-pressed="true">
@@ -1949,6 +1951,11 @@ function selectCategory(cat){
   firstModeBtn.setAttribute('aria-pressed', 'true');
   resultHolder.innerHTML = '';
   stopSpeaking();
+
+  const categoryConfirm = document.getElementById('categoryConfirm');
+  if (categoryConfirm) {
+    categoryConfirm.textContent = `${categoryIcons[cat] || '📄'} Tipo de documento: ${categoryNames[cat] || cat} — toca otra opción arriba si no es correcto`;
+  }
 }
 
 categoryToggle.addEventListener('click', e => {
