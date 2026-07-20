@@ -2504,6 +2504,31 @@ function renderResult(text, calendarEvents){
   setupExportTools();
   if (events.length > 0) setupCalendarButton(events);
 }
+
+// --- Recibir archivos compartidos desde WhatsApp, Gmail, etc. (Android) ---
+(async function checkForSharedFile(){
+  if (new URLSearchParams(location.search).get('shared') !== '1') return;
+
+  // Limpia el "?shared=1" de la URL para que no se vuelva a disparar al recargar
+  history.replaceState({}, '', location.pathname);
+
+  if (!('caches' in window)) return;
+  try {
+    const cache = await caches.open('share-target-cache');
+    const response = await cache.match('shared-file');
+    if (!response) return;
+
+    const blob = await response.blob();
+    const encodedName = response.headers.get('X-Shared-File-Name');
+    const name = encodedName ? decodeURIComponent(encodedName) : 'documento-compartido';
+    const file = new File([blob], name, { type: blob.type });
+
+    await cache.delete('shared-file');
+    handleFile(file);
+  } catch (e) {
+    // Si algo falla, la persona igual puede subir el archivo manualmente.
+  }
+})();
 </script>
 </body>
 </html>

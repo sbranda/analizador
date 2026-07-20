@@ -25,6 +25,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Intercepta el envío de "Compartir con..." desde WhatsApp, Gmail, etc.
+  if (event.request.method === 'POST' && url.pathname.endsWith('/index.html')) {
+    event.respondWith(handleShareTarget(event));
+    return;
+  }
+
   // Never cache API calls — always go to the network for live analysis.
   if (url.hostname === 'generativelanguage.googleapis.com') {
     return;
@@ -43,3 +49,20 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+async function handleShareTarget(event) {
+  try {
+    const formData = await event.request.formData();
+    const file = formData.get('sharedFile');
+    if (file) {
+      const cache = await caches.open('share-target-cache');
+      const safeName = encodeURIComponent(file.name || 'documento-compartido');
+      await cache.put('shared-file', new Response(file, {
+        headers: { 'X-Shared-File-Name': safeName, 'Content-Type': file.type || 'application/octet-stream' }
+      }));
+    }
+  } catch (e) {
+    // Si algo falla, igual redirigimos a la app normal.
+  }
+  return Response.redirect('./index.html?shared=1', 303);
+}
