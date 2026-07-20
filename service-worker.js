@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lector-resultados-v47';
+const CACHE_NAME = 'lector-resultados-v48';
 const APP_SHELL = [
   './index.html',
   './manifest.json',

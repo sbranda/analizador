@@ -16,7 +16,7 @@
 <style>
   :root{
     --paper:#F6F3EC;
-    --page-bg:#F6F3EC;
+    --page-bg:#F7F4EE;
     --card:#FFFFFF;
     --ink:#1E2B29;
     --ink-soft:#4A5652;
@@ -865,6 +865,16 @@
     flex-wrap:wrap;
     margin-bottom:20px;
   }
+  .content-card{
+    background:var(--card);
+    border-radius:22px;
+    box-shadow:0 4px 24px rgba(28,61,55,0.10);
+    padding:32px;
+  }
+  @media (max-width:480px){
+    .content-card{ padding:22px 18px; }
+  }
+
   .app-footer{
     text-align:center;
     font-size:0.72rem;
@@ -1215,6 +1225,7 @@
   </div>
   <p class="step-label" id="stepLabel">Paso 1 de 4 · Sube tu documento</p>
 
+  <div class="content-card">
   <!-- PASO 1: subir documento -->
   <section id="step1">
     <div id="uploadZone" class="upload-zone" role="button" tabindex="0" aria-label="Subir documento, PDF o foto">
@@ -1353,6 +1364,7 @@
     <div id="resultHolder" aria-live="polite"></div>
     <button type="button" class="run-btn" id="newAnalysisBtn" style="margin-top:16px;">🔄 Analizar otro documento</button>
   </section>
+  </div>
 
   <footer class="app-footer">desarrollado por @sebranda</footer>
 </main>
