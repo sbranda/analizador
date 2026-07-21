@@ -874,6 +874,17 @@
   @media (max-width:480px){
     .content-card{ padding:22px 18px; }
   }
+  .global-disclaimer{
+    text-align:center;
+    font-size:0.76rem;
+    line-height:1.4;
+    color:var(--ink);
+    background:var(--flag-soft);
+    border:1.5px solid var(--flag);
+    border-radius:10px;
+    padding:8px 14px;
+    margin:0 0 20px;
+  }
 
   .app-footer{
     text-align:center;
@@ -1224,6 +1235,8 @@
     <span class="step-dot" data-step-dot="4">4</span>
   </div>
   <p class="step-label" id="stepLabel">Paso 1 de 4 · Sube tu documento</p>
+
+  <p class="global-disclaimer">⚠️ Esta app no reemplaza el consejo de un profesional. Consulta siempre con alguien capacitado (médico, abogado, docente) antes de tomar decisiones importantes.</p>
 
   <div class="content-card">
   <!-- PASO 1: subir documento -->
@@ -2017,7 +2030,7 @@ function selectCategory(cat){
 
   const categoryConfirm = document.getElementById('categoryConfirm');
   if (categoryConfirm) {
-    categoryConfirm.textContent = `${categoryIcons[cat] || '📄'} Tipo de documento: ${categoryNames[cat] || cat} — toca otra opción arriba si no es correcto`;
+    categoryConfirm.textContent = `${categoryIcons[cat] || '📄'} Detectamos que tu documento es de tipo: ${categoryNames[cat] || cat}. Si no es correcto, toca otra opción abajo.`;
   }
 }
 
