@@ -1143,6 +1143,7 @@
       <button type="button" class="a11y-btn" data-compare-cat="medico" aria-pressed="true">🩺 Médico</button>
       <button type="button" class="a11y-btn" data-compare-cat="judicial" aria-pressed="false">⚖️ Legal</button>
       <button type="button" class="a11y-btn" data-compare-cat="apuntes" aria-pressed="false">📝 Apuntes</button>
+      <button type="button" class="a11y-btn" data-compare-cat="general" aria-pressed="false">📄 Otro</button>
     </div>
 
     <div class="compare-slots">
@@ -1281,6 +1282,11 @@
         <span class="mode-title">Apuntes</span>
         <span class="mode-desc">Ej: notas de clase, resúmenes</span>
       </button>
+      <button class="mode-btn" data-cat="general" aria-pressed="false">
+        <span class="mode-icon" aria-hidden="true">📄</span>
+        <span class="mode-title">Otro documento</span>
+        <span class="mode-desc">Cualquier otro tipo de texto</span>
+      </button>
     </div>
 
     <button class="run-btn" id="step2NextBtn">Continuar →</button>
@@ -1368,6 +1374,25 @@
       </button>
     </div>
 
+    <div class="modes" id="modesGeneral" role="group" aria-label="¿Qué necesitas? (otro documento)" style="display:none;">
+      <button class="mode-btn active" data-mode="resumen_general" aria-pressed="true">
+        <span class="mode-title">Resumen general</span>
+        <span class="mode-desc">De qué trata el documento, en breve</span>
+      </button>
+      <button class="mode-btn" data-mode="puntos_clave_general" aria-pressed="false">
+        <span class="mode-title">Puntos clave</span>
+        <span class="mode-desc">Lo más importante, en una lista</span>
+      </button>
+      <button class="mode-btn" data-mode="explica_dificil_general" aria-pressed="false">
+        <span class="mode-title">Explica lo difícil</span>
+        <span class="mode-desc">Simplifica las partes más confusas</span>
+      </button>
+      <button class="mode-btn" data-mode="preguntas_general" aria-pressed="false">
+        <span class="mode-title">Preguntas útiles</span>
+        <span class="mode-desc">Para llevar a quien te pueda ayudar</span>
+      </button>
+    </div>
+
     <button class="run-btn" id="runBtn" disabled>Sube un archivo primero</button>
   </section>
 
@@ -1409,7 +1434,8 @@ let compareFile2 = null;
 const comparePrompts = {
   medico: 'Estos son dos documentos médicos del mismo tipo, tomados en fechas distintas: el primer archivo es el más antiguo y el segundo es el más reciente. Compáralos y explica en español sencillo qué valores o hallazgos cambiaron entre uno y otro, si mejoraron, empeoraron o se mantuvieron igual. Organiza en una lista clara. Marca los cambios más importantes empezando la línea con "⚑ ". No des diagnóstico.',
   judicial: 'Estos son dos documentos legales relacionados con el mismo caso, en fechas distintas: el primer archivo es el más antiguo y el segundo el más reciente. Compáralos y explica en español sencillo qué cambió: nuevas resoluciones, cambios de estado del caso, fechas nuevas, o cualquier diferencia relevante. Organiza en una lista. No des asesoría legal.',
-  apuntes: 'Estos son dos documentos de apuntes o estudio sobre un tema similar: el primer archivo es una versión anterior y el segundo una versión más reciente o ampliada. Compáralos y explica en español sencillo qué información es nueva en el segundo, qué se repite, y qué se corrigió o amplió. Organiza en una lista.'
+  apuntes: 'Estos son dos documentos de apuntes o estudio sobre un tema similar: el primer archivo es una versión anterior y el segundo una versión más reciente o ampliada. Compáralos y explica en español sencillo qué información es nueva en el segundo, qué se repite, y qué se corrigió o amplió. Organiza en una lista.',
+  general: 'Estos son dos documentos relacionados, en fechas o versiones distintas: el primer archivo es el más antiguo y el segundo el más reciente. Compáralos y explica en español sencillo qué cambió entre ambos, qué información es nueva, y qué se mantiene igual. Organiza en una lista clara, marcando con "⚑ " los cambios más importantes.'
 };
 
 function fileToBase64(file){
@@ -1524,8 +1550,8 @@ const historyClose = document.getElementById('historyClose');
 const historyList = document.getElementById('historyList');
 const historyClearAll = document.getElementById('historyClearAll');
 
-const categoryIcons = { medico: '🩺', judicial: '⚖️', apuntes: '📝' };
-const categoryNames = { medico: 'Análisis médico', judicial: 'Documento legal', apuntes: 'Apuntes' };
+const categoryIcons = { medico: '🩺', judicial: '⚖️', apuntes: '📝', general: '📄' };
+const categoryNames = { medico: 'Análisis médico', judicial: 'Documento legal', apuntes: 'Apuntes', general: 'Otro documento' };
 
 function loadHistory(){
   try {
@@ -1874,6 +1900,7 @@ const levelToggle = document.getElementById('levelToggle');
 const modesMedico = document.getElementById('modesMedico');
 const modesJudicial = document.getElementById('modesJudicial');
 const modesApuntes = document.getElementById('modesApuntes');
+const modesGeneral = document.getElementById('modesGeneral');
 const headerTag = document.getElementById('headerTag');
 
 // --- Navegación por pasos ---
@@ -1948,9 +1975,10 @@ const levelInstructions = {
 const categoryConfig = {
   medico: { container: 'modesMedico', defaultMode: 'resumen', tag: 'Lab · Rx' },
   judicial: { container: 'modesJudicial', defaultMode: 'resumen_folio', tag: 'Legal · Doc' },
-  apuntes: { container: 'modesApuntes', defaultMode: 'resumen_apuntes', tag: 'Notas · Estudio' }
+  apuntes: { container: 'modesApuntes', defaultMode: 'resumen_apuntes', tag: 'Notas · Estudio' },
+  general: { container: 'modesGeneral', defaultMode: 'resumen_general', tag: 'General · Doc' }
 };
-const modeContainers = { modesMedico, modesJudicial, modesApuntes };
+const modeContainers = { modesMedico, modesJudicial, modesApuntes, modesGeneral };
 
 const modePrompts = {
   medico: {
@@ -1976,6 +2004,12 @@ Después de la lista, en una línea nueva agrega EXACTAMENTE este bloque (sin ex
     puntos_clave: `Extrae los conceptos, términos y definiciones más importantes de estos apuntes. Preséntalos como una lista, con el término y una definición breve de 1-2 frases para cada uno, en español sencillo.`,
     preguntas_repaso: `Basándote en estos apuntes, genera de 6 a 10 preguntas de repaso tipo examen, en español, que ayuden a la persona a autoevaluarse antes de una prueba. Varía el tipo de pregunta (definición, comparación, aplicación). No incluyas las respuestas, solo las preguntas.`,
     explica_dificil: `Identifica los 3-5 conceptos más complejos o densos de estos apuntes y explícalos de forma simple, con una analogía o ejemplo cotidiano para cada uno, en español sencillo.`
+  },
+  general: {
+    resumen_general: `Da un resumen general y breve de este documento, en español sencillo, para alguien que no lo ha leído. No sabemos de qué tipo de documento se trata exactamente, así que primero identifica de qué trata en una frase, y luego organiza el resumen en 3-6 puntos clave con lo más importante.`,
+    puntos_clave_general: `Extrae la información más importante de este documento: datos concretos, nombres, cifras, fechas, condiciones o cualquier cosa que la persona necesite saber. Preséntala como una lista clara en español sencillo. Marca con "⚑ " cualquier dato que parezca especialmente importante o urgente.`,
+    explica_dificil_general: `Identifica las partes de este documento que puedan ser confusas, técnicas, o difíciles de entender para alguien sin conocimiento especializado, y explícalas de forma simple, con ejemplos cotidianos cuando sea posible, en español sencillo.`,
+    preguntas_general: `Basándote en este documento, genera una lista de 5-8 preguntas concretas y útiles que la persona podría hacerle a quien le pueda ayudar a entenderlo mejor (un experto, una institución, alguien de confianza), en español.`
   }
 };
 
@@ -1998,13 +2032,20 @@ const modeLabels = {
     puntos_clave: 'Puntos clave',
     preguntas_repaso: 'Preguntas de repaso',
     explica_dificil: 'Explica lo difícil'
+  },
+  general: {
+    resumen_general: 'Resumen general',
+    puntos_clave_general: 'Puntos clave',
+    explica_dificil_general: 'Explica lo difícil',
+    preguntas_general: 'Preguntas útiles'
   }
 };
 
 const disclaimers = {
   medico: 'Esto no es un diagnóstico médico. Para interpretar tus resultados con certeza y decidir próximos pasos, consulta siempre con tu médico.',
   judicial: 'Esto no es asesoría legal. Para decisiones sobre tu caso, consulta siempre con tu abogado o representante legal.',
-  apuntes: 'Revisa siempre este resumen contra tus apuntes originales y el material del curso antes de un examen — puede omitir detalles importantes.'
+  apuntes: 'Revisa siempre este resumen contra tus apuntes originales y el material del curso antes de un examen — puede omitir detalles importantes.',
+  general: 'Este resumen puede omitir matices importantes del documento original. Para decisiones importantes, consulta siempre con alguien capacitado en el tema.'
 };
 
 function selectCategory(cat){
@@ -2046,7 +2087,7 @@ async function detectCategory(){
   detectStatus.innerHTML = '<span class="spinner" aria-hidden="true"></span> Detectando tipo de documento…';
   detectStatus.classList.remove('found');
 
-  const classifyPrompt = 'Mira este documento y responde ÚNICAMENTE con una de estas tres palabras exactas, sin nada más: "medico" si es un análisis médico o de laboratorio, o un informe de estudio de imagen (radiografía, tomografía, resonancia, ecografía); "judicial" si es un documento legal (demanda, sentencia, expediente, contrato, notificación); "apuntes" si son notas de clase, resúmenes de estudio o material educativo. Si no estás seguro, elige la opción más probable. Responde solo con la palabra, sin puntuación ni explicación.';
+  const classifyPrompt = 'Mira este documento y responde ÚNICAMENTE con una de estas cuatro palabras exactas, sin nada más: "medico" si es un análisis médico o de laboratorio, o un informe de estudio de imagen (radiografía, tomografía, resonancia, ecografía); "judicial" si es un documento legal (demanda, sentencia, expediente, contrato, notificación); "apuntes" si son notas de clase, resúmenes de estudio o material educativo; "general" si es cualquier otro tipo de documento que no encaje claramente en las tres categorías anteriores. Responde solo con la palabra, sin puntuación ni explicación.';
 
   try {
     const response = await fetch(GEMINI_URL, {
@@ -2067,7 +2108,7 @@ async function detectCategory(){
     }
     const data = await response.json();
     const raw = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim().toLowerCase();
-    const detected = ['medico', 'judicial', 'apuntes'].find(cat => raw.includes(cat));
+    const detected = ['medico', 'judicial', 'apuntes', 'general'].find(cat => raw.includes(cat));
 
     if (detected) {
       selectCategory(detected);
@@ -2158,7 +2199,7 @@ function renderChip(){
   });
 }
 
-[modesMedico, modesJudicial, modesApuntes].forEach(container => {
+[modesMedico, modesJudicial, modesApuntes, modesGeneral].forEach(container => {
   container.addEventListener('click', e => {
     const btn = e.target.closest('.mode-btn');
     if (!btn) return;
