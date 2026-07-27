@@ -642,6 +642,16 @@
   .detect-status.found{
     color:var(--teal-deep);
   }
+  .detect-status.detecting{
+    background:var(--card);
+    border:2px solid var(--accent);
+    color:var(--ink);
+    border-radius:10px;
+    padding:8px 12px;
+  }
+  .detect-status.detecting strong{
+    color:var(--teal-deep);
+  }
   .detect-status .spinner{
     width:14px; height:14px;
     border:2px solid var(--line);
@@ -2183,8 +2193,9 @@ categoryToggle.addEventListener('click', e => {
 async function detectCategory(){
   if (!currentFile) return;
   const detectStatus = document.getElementById('detectStatus');
-  detectStatus.innerHTML = '<span class="spinner" aria-hidden="true"></span> Detectando tipo de documento…';
+  detectStatus.innerHTML = '<span class="spinner" aria-hidden="true"></span> <strong>Detectando…</strong> Espere un momento';
   detectStatus.classList.remove('found');
+  detectStatus.classList.add('detecting');
 
   const classifyPrompt = 'Mira este documento y responde ÚNICAMENTE con una de estas cuatro palabras exactas, sin nada más: "medico" si es un análisis médico o de laboratorio, o un informe de estudio de imagen (radiografía, tomografía, resonancia, ecografía); "judicial" si es un documento legal (demanda, sentencia, expediente, contrato, notificación); "apuntes" si son notas de clase, resúmenes de estudio o material educativo; "general" si es cualquier otro tipo de documento que no encaje claramente en las tres categorías anteriores. Responde solo con la palabra, sin puntuación ni explicación.';
 
@@ -2219,6 +2230,10 @@ async function detectCategory(){
     }
   } catch (err) {
     detectStatus.textContent = 'No pudimos detectar el tipo automáticamente — elige uno arriba.';
+  } finally {
+    detectStatus.classList.remove('detecting');
+    step1NextBtn.disabled = false;
+    step1NextBtn.textContent = 'Continuar →';
   }
 }
 
@@ -2313,8 +2328,8 @@ function handleFile(file){
     const base64 = dataUrl.split(',')[1];
     currentFile = { base64, mediaType, name: file.name };
     renderChip();
-    step1NextBtn.disabled = false;
-    step1NextBtn.textContent = 'Continuar →';
+    step1NextBtn.disabled = true;
+    step1NextBtn.textContent = 'Detectando…';
     runBtn.disabled = false;
     runBtn.textContent = 'Analizar documento';
     detectCategory();
