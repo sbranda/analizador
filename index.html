@@ -886,6 +886,104 @@
     margin:0 0 20px;
   }
 
+  .chat-section{
+    margin-top:18px;
+  }
+  .chat-toggle-btn{
+    width:100%;
+    background:var(--card);
+    border:2px solid var(--ink);
+    border-radius:14px;
+    padding:13px;
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:0.9rem;
+    color:var(--ink);
+    cursor:pointer;
+    box-shadow:3px 3px 0 var(--shadow);
+    transition:transform .1s ease, box-shadow .1s ease;
+  }
+  .chat-toggle-btn:hover{
+    transform:translate(-1px,-1px);
+    box-shadow:4px 4px 0 var(--shadow);
+  }
+  .chat-box{
+    margin-top:12px;
+    border:2px solid var(--ink);
+    border-radius:14px;
+    background:var(--card);
+    padding:14px;
+  }
+  .chat-log{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    max-height:320px;
+    overflow-y:auto;
+    margin-bottom:12px;
+  }
+  .chat-bubble{
+    max-width:85%;
+    padding:9px 13px;
+    border-radius:12px;
+    font-size:0.88rem;
+    line-height:1.5;
+    white-space:pre-wrap;
+  }
+  .chat-bubble.user{
+    align-self:flex-end;
+    background:var(--accent);
+    color:var(--accent-text);
+    border-bottom-right-radius:3px;
+  }
+  .chat-bubble.model{
+    align-self:flex-start;
+    background:var(--paper);
+    color:var(--ink);
+    border:1.5px solid var(--line);
+    border-bottom-left-radius:3px;
+  }
+  .chat-bubble.loading{
+    font-style:italic;
+    color:var(--ink-soft);
+  }
+  .chat-bubble.chat-error{
+    background:var(--flag-soft);
+    border:1.5px solid var(--flag);
+    color:var(--flag);
+  }
+  .chat-input-row{
+    display:flex;
+    gap:8px;
+    align-items:flex-end;
+  }
+  .chat-input{
+    flex:1;
+    resize:none;
+    border:2px solid var(--ink);
+    border-radius:10px;
+    padding:9px 12px;
+    font-family:var(--font-body);
+    font-size:0.88rem;
+    max-height:120px;
+  }
+  .chat-send-btn{
+    background:var(--teal-deep);
+    color:var(--paper);
+    border:2px solid var(--ink);
+    border-radius:10px;
+    padding:9px 16px;
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:0.85rem;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .chat-send-btn:disabled{
+    opacity:0.6;
+    cursor:not-allowed;
+  }
+
   .app-footer{
     text-align:center;
     font-size:0.72rem;
@@ -1958,6 +2056,7 @@ newAnalysisBtn.addEventListener('click', () => {
   resultHolder.innerHTML = '';
   stopSpeaking();
   document.getElementById('detectStatus').textContent = '';
+  chatHistory = [];
   goToStep(1);
 });
 
@@ -2301,6 +2400,15 @@ runBtn.addEventListener('click', async () => {
     const { displayText, events } = extractCalendarEvents(text);
     renderResult(displayText, events);
     saveHistoryEntry(displayText);
+
+    // Guardamos el contexto para el chat de preguntas: el documento solo se manda una vez.
+    chatHistory = [
+      { role: 'user', parts: [
+        { inlineData: { mimeType: currentFile.mediaType, data: currentFile.base64 } },
+        { text: fullPrompt }
+      ] },
+      { role: 'model', parts: [ { text } ] }
+    ];
   } catch (err) {
     resultHolder.innerHTML = `<div class="error-box">Ocurrió un problema al analizar el documento. ${err.message || ''} Intenta de nuevo.</div>`;
   } finally {
@@ -2500,6 +2608,90 @@ function setupTranslate(){
 }
 
 let originalResultText = '';
+let chatHistory = [];
+
+function escapeHtmlChat(str){
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function setupChat(){
+  const chatToggleBtn = document.getElementById('chatToggleBtn');
+  const chatBox = document.getElementById('chatBox');
+  const chatLog = document.getElementById('chatLog');
+  const chatInput = document.getElementById('chatInput');
+  const chatSendBtn = document.getElementById('chatSendBtn');
+
+  chatToggleBtn.addEventListener('click', () => {
+    const isHidden = chatBox.hasAttribute('hidden');
+    if (isHidden) {
+      chatBox.removeAttribute('hidden');
+      chatInput.focus();
+    } else {
+      chatBox.setAttribute('hidden', '');
+    }
+  });
+
+  function addBubble(role, htmlContent, extraClass){
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble ${role}${extraClass ? ' ' + extraClass : ''}`;
+    bubble.innerHTML = htmlContent;
+    chatLog.appendChild(bubble);
+    chatLog.scrollTop = chatLog.scrollHeight;
+    return bubble;
+  }
+
+  async function sendQuestion(){
+    const question = chatInput.value.trim();
+    if (!question) return;
+
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    chatSendBtn.disabled = true;
+    addBubble('user', escapeHtmlChat(question));
+    const loadingBubble = addBubble('model', 'Pensando…', 'loading');
+
+    const questionWithLevel = `${question}\n\n(Recuerda responder en el mismo nivel de explicación: ${levelInstructions[currentLevel]})`;
+    chatHistory.push({ role: 'user', parts: [{ text: questionWithLevel }] });
+
+    try {
+      const response = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: chatHistory })
+      });
+      if (!response.ok) {
+        const errBody = await response.text();
+        throw new Error(`(${response.status}) ${errBody.slice(0, 150)}`);
+      }
+      const data = await response.json();
+      const answer = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('\n').trim();
+      if (!answer) throw new Error('Sin respuesta');
+
+      chatHistory.push({ role: 'model', parts: [{ text: answer }] });
+      loadingBubble.classList.remove('loading');
+      loadingBubble.innerHTML = escapeHtmlChat(answer).replace(/\n/g, '<br>');
+    } catch (err) {
+      chatHistory.pop(); // no dejamos la pregunta sin respuesta en el historial
+      loadingBubble.classList.remove('loading');
+      loadingBubble.classList.add('chat-error');
+      loadingBubble.innerHTML = `No se pudo responder. ${escapeHtmlChat(err.message || '')} Intenta de nuevo.`;
+    } finally {
+      chatSendBtn.disabled = false;
+    }
+  }
+
+  chatSendBtn.addEventListener('click', sendQuestion);
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendQuestion();
+    }
+  });
+  chatInput.addEventListener('input', () => {
+    chatInput.style.height = 'auto';
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+  });
+}
 
 function setupCalendarButton(events){
   const calendarBtn = document.getElementById('calendarBtn');
@@ -2610,12 +2802,25 @@ function renderResult(text, calendarEvents){
     </div>
 
     <div class="disclaimer">${disclaimers[currentCategory]}</div>
+
+    <div class="chat-section">
+      <button type="button" id="chatToggleBtn" class="chat-toggle-btn">💬 Preguntar algo más sobre este documento</button>
+      <div id="chatBox" class="chat-box" hidden>
+        <div id="chatLog" class="chat-log"></div>
+        <div class="chat-input-row">
+          <label for="chatInput" class="visually-hidden">Escribe tu pregunta</label>
+          <textarea id="chatInput" class="chat-input" rows="1" placeholder="Escribe tu pregunta..."></textarea>
+          <button type="button" id="chatSendBtn" class="chat-send-btn">Enviar</button>
+        </div>
+      </div>
+    </div>
   `;
 
   setupSpeakButton(text);
   setupTranslate();
   setupExportTools();
   if (events.length > 0) setupCalendarButton(events);
+  setupChat();
 }
 
 // --- Recibir archivos compartidos desde WhatsApp, Gmail, etc. (Android) ---
