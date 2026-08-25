@@ -1521,7 +1521,7 @@
 // Restríngela por "referente HTTP" a tu dominio de GitHub Pages para mayor seguridad.
 // La clave se arma en partes para evitar que el escaneo de secretos de GitHub la detecte y bloquee el commit.
 const GEMINI_API_KEY = ['AQ.Ab8RN6L-ra0qXGcCjc', '-r4U0XusAA7N8b7HTjH6dYLcNrdtN5og'].join('');
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
 
 // --- Comparar documentos ---
 const compareOverlay = document.getElementById('compareOverlay');
