@@ -1520,8 +1520,103 @@
 // 👉 Reemplaza esto por tu clave gratuita de Google AI Studio (aistudio.google.com/apikey)
 // Restríngela por "referente HTTP" a tu dominio de GitHub Pages para mayor seguridad.
 // La clave se arma en partes para evitar que el escaneo de secretos de GitHub la detecte y bloquee el commit.
-const GEMINI_API_KEY = ['AQ.Ab8RN6L-ra0qXGcCjc', '-r4U0XusAA7N8b7HTjH6dYLcNrdtN5og'].join('');
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+// URL de tu Cloudflare Worker (usa Workers AI de Cloudflare, sin clave).
+const WORKER_URL = 'https://TU-WORKER.workers.dev';
+
+function fileBlock(f){
+  const type = f.mediaType === 'application/pdf' ? 'document' : 'image';
+  return { type, source: { type: 'base64', media_type: f.mediaType, data: f.base64 } };
+}
+
+// ---- PDF: se extrae el texto en el navegador (el modelo no lee PDF directamente) ----
+const PDFJS_VERSION = '3.11.174';
+const PDFJS_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/' + PDFJS_VERSION + '/';
+const MAX_PDF_CHARS = 90000;
+const pdfCache = new Map();
+let pdfjsPromise = null;
+
+function loadPdfJs(){
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (!pdfjsPromise) {
+    pdfjsPromise = new Promise((resolve, reject) => {
+      const sc = document.createElement('script');
+      sc.src = PDFJS_BASE + 'pdf.min.js';
+      sc.onload = () => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_BASE + 'pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      };
+      sc.onerror = () => { pdfjsPromise = null; reject(new Error('No se pudo cargar el lector de PDF. Revisa tu conexión.')); };
+      document.head.appendChild(sc);
+    });
+  }
+  return pdfjsPromise;
+}
+
+async function pdfToParts(base64){
+  const key = base64.length + ':' + base64.slice(0, 64) + base64.slice(-64);
+  if (pdfCache.has(key)) return pdfCache.get(key);
+  const pdfjsLib = await loadPdfJs();
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+  let text = '';
+  for (let n = 1; n <= pdf.numPages && text.length < MAX_PDF_CHARS; n++) {
+    const page = await pdf.getPage(n);
+    const content = await page.getTextContent();
+    text += '\n--- Página ' + n + ' ---\n' + content.items.map(it => it.str).join(' ');
+  }
+  let parts;
+  if (text.replace(/--- Página \d+ ---/g, '').trim().length > 80) {
+    parts = [{ type: 'text', text: 'CONTENIDO DEL DOCUMENTO (PDF, ' + pdf.numPages + ' páginas):\n' + text.slice(0, MAX_PDF_CHARS) }];
+  } else {
+    // PDF escaneado (sin texto): se envían las primeras páginas como imágenes
+    parts = [];
+    const limit = Math.min(pdf.numPages, 3);
+    for (let n = 1; n <= limit; n++) {
+      const page = await pdf.getPage(n);
+      const viewport = page.getViewport({ scale: 1.5 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      parts.push({ type: 'image_url', image_url: { url: canvas.toDataURL('image/jpeg', 0.85) } });
+    }
+    parts.push({ type: 'text', text: '(Documento escaneado: se muestran las primeras ' + limit + ' páginas de ' + pdf.numPages + ')' });
+  }
+  pdfCache.set(key, parts);
+  return parts;
+}
+
+async function toAIMessages(messages){
+  const out = [];
+  for (const m of messages) {
+    if (typeof m.content === 'string') { out.push({ role: m.role, content: m.content }); continue; }
+    const parts = [];
+    for (const b of m.content) {
+      if (b.type === 'document') parts.push(...await pdfToParts(b.source.data));
+      else if (b.type === 'image') parts.push({ type: 'image_url', image_url: { url: 'data:' + b.source.media_type + ';base64,' + b.source.data } });
+      else parts.push(b);
+    }
+    out.push({ role: m.role, content: parts });
+  }
+  return out;
+}
+
+async function callAI({ messages, max_tokens = 4096 }){
+  const prepared = await toAIMessages(messages);
+  const response = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages: prepared, max_tokens })
+  });
+  if (!response.ok) {
+    const errBody = await response.text();
+    throw new Error(`Error de la API (${response.status}): ${errBody.slice(0, 200)}`);
+  }
+  const data = await response.json();
+  return (data.text || '').trim();
+}
 
 // --- Comparar documentos ---
 const compareOverlay = document.getElementById('compareOverlay');
@@ -1610,25 +1705,13 @@ compareRunBtn.addEventListener('click', async () => {
     </div>`;
 
   try {
-    const response = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { inlineData: { mimeType: compareFile1.mediaType, data: compareFile1.base64 } },
-            { inlineData: { mimeType: compareFile2.mediaType, data: compareFile2.base64 } },
-            { text: comparePrompts[compareCategory] }
-          ]
-        }]
-      })
+    const text = await callAI({
+      messages: [{ role: 'user', content: [
+        fileBlock(compareFile1),
+        fileBlock(compareFile2),
+        { type: 'text', text: comparePrompts[compareCategory] }
+      ] }]
     });
-    if (!response.ok) {
-      const errBody = await response.text();
-      throw new Error(`Error de la API (${response.status}): ${errBody.slice(0, 200)}`);
-    }
-    const data = await response.json();
-    const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('\n').trim();
     if (!text) throw new Error('No se pudo generar una comparación.');
 
     compareResultHolder.innerHTML = `
@@ -2200,24 +2283,10 @@ async function detectCategory(){
   const classifyPrompt = 'Mira este documento y responde ÚNICAMENTE con una de estas cuatro palabras exactas, sin nada más: "medico" si es un análisis médico o de laboratorio, o un informe de estudio de imagen (radiografía, tomografía, resonancia, ecografía); "judicial" si es un documento legal (demanda, sentencia, expediente, contrato, notificación); "apuntes" si son notas de clase, resúmenes de estudio o material educativo; "general" si es cualquier otro tipo de documento que no encaje claramente en las tres categorías anteriores. Responde solo con la palabra, sin puntuación ni explicación.';
 
   try {
-    const response = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { inlineData: { mimeType: currentFile.mediaType, data: currentFile.base64 } },
-            { text: classifyPrompt }
-          ]
-        }]
-      })
-    });
-    if (!response.ok) {
-      const errBody = await response.text();
-      throw new Error(`(${response.status}) ${errBody.slice(0, 150)}`);
-    }
-    const data = await response.json();
-    const raw = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim().toLowerCase();
+    const raw = (await callAI({
+      max_tokens: 20,
+      messages: [{ role: 'user', content: [ fileBlock(currentFile), { type: 'text', text: classifyPrompt } ] }]
+    })).toLowerCase();
     const detected = ['medico', 'judicial', 'apuntes', 'general'].find(cat => raw.includes(cat));
 
     if (detected) {
@@ -2388,27 +2457,9 @@ runBtn.addEventListener('click', async () => {
 
   try {
     const fullPrompt = `${modePrompts[currentCategory][currentMode]}\n\n${levelInstructions[currentLevel]}`;
-    const response = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { inlineData: { mimeType: currentFile.mediaType, data: currentFile.base64 } },
-            { text: fullPrompt }
-          ]
-        }]
-      })
+    const text = await callAI({
+      messages: [{ role: 'user', content: [ fileBlock(currentFile), { type: 'text', text: fullPrompt } ] }]
     });
-
-    if (!response.ok) {
-      const errBody = await response.text();
-      throw new Error('Error de la API (' + response.status + '): ' + errBody.slice(0, 200));
-    }
-    const data = await response.json();
-    const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('\n').trim();
 
     if (!text) throw new Error('No se pudo generar una respuesta.');
 
@@ -2418,11 +2469,8 @@ runBtn.addEventListener('click', async () => {
 
     // Guardamos el contexto para el chat de preguntas: el documento solo se manda una vez.
     chatHistory = [
-      { role: 'user', parts: [
-        { inlineData: { mimeType: currentFile.mediaType, data: currentFile.base64 } },
-        { text: fullPrompt }
-      ] },
-      { role: 'model', parts: [ { text } ] }
+      { role: 'user', content: [ fileBlock(currentFile), { type: 'text', text: fullPrompt } ] },
+      { role: 'assistant', content: text }
     ];
   } catch (err) {
     resultHolder.innerHTML = `<div class="error-box">Ocurrió un problema al analizar el documento. ${err.message || ''} Intenta de nuevo.</div>`;
@@ -2581,32 +2629,10 @@ function setupTranslate(){
     translateBtn.textContent = 'Traduciendo…';
 
     try {
-      const response = await fetch(GEMINI_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `Traduce el siguiente texto al ${langLabel}. Mantén el formato de lista, los saltos de línea, y conserva el símbolo "⚑" delante de las líneas que lo tengan. Responde solo con la traducción, sin comentarios adicionales:\n\n${originalResultText}`
-            }]
-          }]
-        })
+      const translated = await callAI({
+        messages: [{ role: 'user', content: `Traduce el siguiente texto al ${langLabel}. Mantén el formato de lista, los saltos de línea, y conserva el símbolo "⚑" delante de las líneas que lo tengan. Responde solo con la traducción, sin comentarios adicionales:\n\n${originalResultText}` }]
       });
-      if (!response.ok) {
-        const errBody = await response.text();
-        throw new Error(`Error de traducción (${response.status}): ${errBody.slice(0, 200)}`);
-      }
-      const data = await response.json();
-
-      if (data.promptFeedback?.blockReason) {
-        throw new Error(`Bloqueado por seguridad: ${data.promptFeedback.blockReason}`);
-      }
-
-      const translated = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('\n').trim();
-      if (!translated) {
-        const finishReason = data.candidates?.[0]?.finishReason || 'desconocido';
-        throw new Error(`Sin traducción (motivo: ${finishReason})`);
-      }
+      if (!translated) throw new Error('Sin traducción');
 
       resultTextEl.innerHTML = renderResultText(translated);
       translateBtn.textContent = '↺ Ver original';
@@ -2666,23 +2692,13 @@ function setupChat(){
     const loadingBubble = addBubble('model', 'Pensando…', 'loading');
 
     const questionWithLevel = `${question}\n\n(Recuerda responder en el mismo nivel de explicación: ${levelInstructions[currentLevel]})`;
-    chatHistory.push({ role: 'user', parts: [{ text: questionWithLevel }] });
+    chatHistory.push({ role: 'user', content: questionWithLevel });
 
     try {
-      const response = await fetch(GEMINI_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: chatHistory })
-      });
-      if (!response.ok) {
-        const errBody = await response.text();
-        throw new Error(`(${response.status}) ${errBody.slice(0, 150)}`);
-      }
-      const data = await response.json();
-      const answer = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('\n').trim();
+      const answer = await callAI({ messages: chatHistory });
       if (!answer) throw new Error('Sin respuesta');
 
-      chatHistory.push({ role: 'model', parts: [{ text: answer }] });
+      chatHistory.push({ role: 'assistant', content: answer });
       loadingBubble.classList.remove('loading');
       loadingBubble.innerHTML = escapeHtmlChat(answer).replace(/\n/g, '<br>');
     } catch (err) {

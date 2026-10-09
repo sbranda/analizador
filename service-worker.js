@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lector-resultados-v56';
+const CACHE_NAME = 'lector-resultados-v58';
 const APP_SHELL = [
   './index.html',
   './manifest.json',
@@ -32,7 +32,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Never cache API calls — always go to the network for live analysis.
-  if (url.hostname === 'generativelanguage.googleapis.com') {
+  if (url.hostname.endsWith('workers.dev')) {
     return;
   }
 
