@@ -8,13 +8,14 @@ function cors(origin) {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Expose-Headers': 'X-Clarito-Worker',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin'
   };
 }
 
 function json(obj, status, origin) {
-  const headers = Object.assign({ 'Content-Type': 'application/json' }, cors(origin));
+  const headers = Object.assign({ 'Content-Type': 'application/json', 'X-Clarito-Worker': 'ai-v1' }, cors(origin));
   return new Response(JSON.stringify(obj), { status: status, headers: headers });
 }
 

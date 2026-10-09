@@ -1521,7 +1521,7 @@
 // Restríngela por "referente HTTP" a tu dominio de GitHub Pages para mayor seguridad.
 // La clave se arma en partes para evitar que el escaneo de secretos de GitHub la detecte y bloquee el commit.
 // URL de tu Cloudflare Worker (usa Workers AI de Cloudflare, sin clave).
-const WORKER_URL = 'https://cv.brandaster.workers.dev/';
+const WORKER_URL = 'https://TU-WORKER.workers.dev';
 
 function fileBlock(f){
   const type = f.mediaType === 'application/pdf' ? 'document' : 'image';
@@ -1612,7 +1612,10 @@ async function callAI({ messages, max_tokens = 4096 }){
   });
   if (!response.ok) {
     const errBody = await response.text();
-    throw new Error(`Error de la API (${response.status}): ${errBody.slice(0, 200)}`);
+    const firma = response.headers.get('X-Clarito-Worker') ? 'Worker Clarito OK' : 'este Worker NO es el código de Clarito';
+    let host = WORKER_URL;
+    try { host = new URL(WORKER_URL).host; } catch (e) {}
+    throw new Error(`Error de la API (${response.status}) [${host} - ${firma}]: ${errBody.slice(0, 200)}`);
   }
   const data = await response.json();
   return (data.text || '').trim();
