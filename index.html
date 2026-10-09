@@ -1521,7 +1521,7 @@
 // Restríngela por "referente HTTP" a tu dominio de GitHub Pages para mayor seguridad.
 // La clave se arma en partes para evitar que el escaneo de secretos de GitHub la detecte y bloquee el commit.
 // URL de tu Cloudflare Worker (usa Workers AI de Cloudflare, sin clave).
-const WORKER_URL = 'https://clarito.brandaster.workers.dev/';
+const WORKER_URL = 'https://clarito.brandaster.workers.dev';
 
 function fileBlock(f){
   const type = f.mediaType === 'application/pdf' ? 'document' : 'image';
@@ -2354,10 +2354,12 @@ function enhanceImageDataUrl(dataUrl){
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
+        const MAX_SIDE = 1600;
+        const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+        canvas.width = Math.round(img.naturalWidth * scale);
+        canvas.height = Math.round(img.naturalHeight * scale);
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
         const pixelCount = data.length / 4;
@@ -2378,7 +2380,7 @@ function enhanceImageDataUrl(dataUrl){
           data[o] = data[o+1] = data[o+2] = stretched;
         }
         ctx.putImageData(imageData, 0, 0);
-        resolve(canvas.toDataURL('image/jpeg', 0.92));
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
       } catch (e) {
         resolve(dataUrl); // si algo falla, seguimos con la imagen original
       }
